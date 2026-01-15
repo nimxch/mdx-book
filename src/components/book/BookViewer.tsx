@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Button } from "@/components/ui/button"
@@ -28,6 +28,7 @@ export function BookViewer({
   const [showActionMenu, setShowActionMenu] = useState(false)
   const [selectedText, setSelectedText] = useState("")
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const currentPage = book.pages[currentPageIndex]
   const totalPages = book.pages.length
@@ -42,6 +43,10 @@ export function BookViewer({
     } else if (currentChapter > 0) {
       onChapterChange(currentChapter - 1)
     }
+    // Scroll to top
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0
+    }
   }, [currentPageIndex, book.pages, currentChapter, onChapterChange])
 
   const handleNext = useCallback(() => {
@@ -51,6 +56,10 @@ export function BookViewer({
       if (newChapter !== currentChapter) {
         onChapterChange(newChapter)
       }
+    }
+    // Scroll to top
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0
     }
   }, [currentPageIndex, totalPages, book.pages, currentChapter, onChapterChange])
 
@@ -271,6 +280,7 @@ export function BookViewer({
         <div className="flex-1 overflow-hidden relative flex flex-row">
           <div className="flex-1 overflow-hidden relative w-full">
             <div
+              ref={contentRef}
               className={`h-full ${getFontFamilyClass()} overflow-y-auto px-8 md:px-12 lg:px-24 py-8 pb-24 md:pb-28`}
               onMouseUp={handleTextSelection}
               onTouchEnd={handleTextSelection}
