@@ -2,11 +2,16 @@ import { useState, useEffect } from "react"
 import { Auth } from "@/components/auth/Auth"
 import { BookViewer } from "@/components/book/BookViewer"
 import { Settings } from "@/components/settings/Settings"
-import { Github, Loader2, BookOpen } from "lucide-react"
+import { Loader2, BookOpen } from "lucide-react"
 import type { Book } from "@/types"
 import type { User } from "@/lib/db"
 import { CachedRepos } from "@/components/book/CachedRepos"
 import { SettingsProvider, useSettings } from "@/context/SettingsContext"
+import { FeaturesPage } from "@/components/pages/FeaturesPage"
+import { PrivacyPage } from "@/components/pages/PrivacyPage"
+import { ContactPage } from "@/components/pages/ContactPage"
+
+type ViewState = 'dashboard' | 'features' | 'privacy' | 'contact'
 
 function AppContent() {
   const [user, setUser] = useState<User | null>(null)
@@ -15,6 +20,10 @@ function AppContent() {
   const [showTOC, setShowTOC] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [initialPageIndex, setInitialPageIndex] = useState(0)
+  
+  // Navigation State
+  const [currentView, setCurrentView] = useState<ViewState>('dashboard')
+
   // Settings modal state
   const [settingsOpen, setSettingsOpen] = useState(false)
 
@@ -72,8 +81,6 @@ function AppContent() {
     }
   }, [currentChapter, book])
 
-
-
   const handleAuthChange = (newUser: User | null) => {
     setUser(newUser)
   }
@@ -95,6 +102,22 @@ function AppContent() {
     setIsDownloading(true)
   }
 
+  const handleNavigate = (view: ViewState, sectionId?: string) => {
+    setBook(null) // Close book if open
+    setCurrentView(view)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    
+    if (sectionId) {
+      // Small timeout to allow render
+      setTimeout(() => {
+        const element = document.getElementById(sectionId)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' })
+        }
+      }, 100)
+    }
+  }
+
   if (book) {
     return (
       <BookViewer
@@ -113,7 +136,7 @@ function AppContent() {
 
   return (
     <div
-      className={`min-h-screen bg-background text-foreground transition-colors duration-300`}
+      className={`min-h-screen bg-background text-foreground transition-colors duration-300 flex flex-col`}
       data-theme={theme}
       data-font-size={fontSize}
       data-font-family={fontFamily}
@@ -121,19 +144,23 @@ function AppContent() {
       {/* Settings Modal Triggered by Profile Icon */}
       <Settings isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b bg-background/95 border-border backdrop-blur transition-colors duration-300">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
-              <h1 className="text-lg font-semibold tracking-tight text-foreground">
-                Book Reader
-              </h1>
-            </div>
-            {user && (
+      {/* Header - Only show when logged in */}
+      {user && (
+        <header className="sticky top-0 z-40 border-b bg-background/95 border-border backdrop-blur transition-colors duration-300">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <button 
+                onClick={() => setCurrentView('dashboard')}
+                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+              >
+                <div className="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 text-white" />
+                </div>
+                <h1 className="text-xl font-serif italic font-medium tracking-tight text-foreground">
+                  MarkBook
+                </h1>
+              </button>
+              
               <button
                 className="flex items-center gap-3 hover:bg-muted/50 p-1.5 pr-3 rounded-full transition-colors group border border-transparent hover:border-border"
                 onClick={() => setSettingsOpen(true)}
@@ -148,73 +175,81 @@ function AppContent() {
                   <span className="text-sm hidden sm:inline text-foreground font-medium group-hover:text-primary transition-colors">{user.name}</span>
                 </div>
               </button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-20">
-        {/* Download Progress Card */}
-        {isDownloading && (
-          <div className="max-w-2xl mx-auto mb-12 animate-in fade-in">
-            <div className="p-4 rounded-lg bg-gray-100 border border-gray-300 flex items-center justify-center gap-3">
-              <Loader2 className="w-5 h-5 text-green-600 animate-spin" />
-              <span className="text-sm font-medium text-foreground">Downloading repository...</span>
             </div>
           </div>
-        )}
+        </header>
+      )}
 
-        {user ? (
-          <>
-            {/* Welcome Section */}
-            <div className="max-w-4xl mx-auto mb-16 text-center">
-              <h2 className="text-5xl md:text-6xl font-serif italic font-light mb-6 leading-tight text-foreground">
-                Welcome back, {user.name.split(' ')[0]}!
-              </h2>
-              <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-12">
-                Your reading hub for GitHub repositories. Transform code into beautiful books with custom fonts, themes, and offline access.
-              </p>
-
-
-            </div>
-
-            {/* Main Content */}
-            <CachedRepos
-              onBookSelect={handleBookSelect}
-              onDownloadStart={handleDownloadStart}
-            />
-          </>
+      <main className="container mx-auto px-4 py-20 flex-grow">
+        {currentView === 'features' ? (
+           <FeaturesPage onBack={() => setCurrentView('dashboard')} />
+        ) : currentView === 'privacy' ? (
+           <PrivacyPage onBack={() => setCurrentView('dashboard')} />
+        ) : currentView === 'contact' ? (
+           <ContactPage onBack={() => setCurrentView('dashboard')} />
         ) : (
-          <Auth onAuthChange={handleAuthChange} />
+          <>
+            {/* Download Progress Card */}
+            {isDownloading && (
+              <div className="max-w-2xl mx-auto mb-12 animate-in fade-in">
+                <div className="p-4 rounded-lg bg-gray-100 border border-gray-300 flex items-center justify-center gap-3">
+                  <Loader2 className="w-5 h-5 text-green-600 animate-spin" />
+                  <span className="text-sm font-medium text-foreground">Downloading repository...</span>
+                </div>
+              </div>
+            )}
+
+            {user ? (
+              <>
+                {/* Welcome Section */}
+                <div className="max-w-4xl mx-auto mb-16 text-center">
+                  <h2 className="text-5xl md:text-6xl font-serif italic font-light mb-6 leading-tight text-foreground">
+                    Welcome back, {user.name.split(' ')[0]}!
+                  </h2>
+                  <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-12">
+                    Convert GitHub markdown repositories into organized, offline-ready electronic books.
+                  </p>
+                </div>
+
+                {/* Main Content */}
+                <CachedRepos
+                  onBookSelect={handleBookSelect}
+                  onDownloadStart={handleDownloadStart}
+                />
+              </>
+            ) : (
+              <Auth onAuthChange={handleAuthChange} />
+            )}
+          </>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-muted/30 mt-20">
+      <footer className="border-t border-border bg-muted/30 mt-auto">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
               <div>
-                <h4 className="font-medium text-sm mb-4 flex items-center gap-2 text-foreground">
+                <button onClick={() => setCurrentView('dashboard')} className="font-medium text-sm mb-4 flex items-center gap-2 text-foreground hover:text-green-600 transition-colors">
                   <BookOpen className="w-4 h-4" />
-                  Book Reader
-                </h4>
+                  MarkBook
+                </button>
                 <p className="text-xs text-muted-foreground leading-relaxed">Read repositories the way they deserve to be read—beautifully, offline, on your terms.</p>
               </div>
               <div>
                 <h4 className="font-medium text-sm mb-4 text-foreground">Features</h4>
                 <ul className="space-y-2 text-xs text-muted-foreground">
-                  <li><a href="#" className="hover:text-green-600 transition-colors">Offline Reading</a></li>
-                  <li><a href="#" className="hover:text-green-600 transition-colors">Custom Themes</a></li>
-                  <li><a href="#" className="hover:text-green-600 transition-colors">Privacy First</a></li>
+                  <li><button onClick={() => handleNavigate('features', 'offline-reading')} className="hover:text-green-600 transition-colors text-left">Offline Reading</button></li>
+                  <li><button onClick={() => handleNavigate('features', 'custom-themes')} className="hover:text-green-600 transition-colors text-left">Custom Themes</button></li>
+                  <li><button onClick={() => handleNavigate('features', 'privacy-first')} className="hover:text-green-600 transition-colors text-left">Privacy First</button></li>
                 </ul>
               </div>
               <div>
                 <h4 className="font-medium text-sm mb-4 text-foreground">Project</h4>
                 <ul className="space-y-2 text-xs text-muted-foreground">
-                  <li><a href="#" className="hover:text-green-600 transition-colors">GitHub</a></li>
-                  <li><a href="#" className="hover:text-green-600 transition-colors">Privacy</a></li>
-                  <li><a href="#" className="hover:text-green-600 transition-colors">Contact</a></li>
+                  <li><a href="https://github.com/nimxch/mdx-book" target="_blank" rel="noopener noreferrer" className="hover:text-green-600 transition-colors">GitHub</a></li>
+                  <li><button onClick={() => setCurrentView('privacy')} className="hover:text-green-600 transition-colors text-left">Privacy</button></li>
+                  <li><button onClick={() => setCurrentView('contact')} className="hover:text-green-600 transition-colors text-left">Contact</button></li>
                 </ul>
               </div>
             </div>

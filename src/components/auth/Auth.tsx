@@ -60,15 +60,15 @@ export function Auth({ onAuthChange }: AuthProps) {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="grid lg:grid-cols-2 gap-16 items-center">
+      <div className="grid lg:grid-cols-2 gap-16 items-start pt-12">
         {/* Left side - Value Proposition */}
-        <div className="space-y-8">
+        <div className="space-y-8 pt-4">
           <div>
-            <h2 className="text-5xl font-serif italic font-light mb-4 leading-tight text-gray-900">
-              Read Code Better
+            <h2 className="text-5xl font-serif italic font-light mb-4 leading-tight text-green-600">
+              MarkBook.
             </h2>
             <p className="text-base text-gray-600 leading-relaxed">
-              Sign in to transform GitHub repositories into beautifully formatted, offline-readable experiences tailored to your preferences.
+              Instantly convert GitHub markdown repositories into organized, offline-ready electronic books.
             </p>
           </div>
 
