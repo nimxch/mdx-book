@@ -14,6 +14,61 @@ function AppContent() {
   const [currentChapter, setCurrentChapter] = useState(0)
   const [showTOC, setShowTOC] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [initialPageIndex, setInitialPageIndex] = useState(0)
+
+  // Load persisted state on mount
+  useEffect(() => {
+    const savedUser = localStorage.getItem('book-reader-user')
+    const savedBook = localStorage.getItem('book-reader-current-book')
+    const savedChapter = localStorage.getItem('book-reader-current-chapter')
+    
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser))
+      } catch (e) {
+        console.error('Failed to parse saved user', e)
+      }
+    }
+    
+    if (savedBook) {
+      try {
+        setBook(JSON.parse(savedBook))
+      } catch (e) {
+        console.error('Failed to parse saved book', e)
+      }
+    }
+    
+    if (savedChapter) {
+      setCurrentChapter(parseInt(savedChapter, 10) || 0)
+    }
+  }, [])
+
+  // Persist user state
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('book-reader-user', JSON.stringify(user))
+    } else {
+      localStorage.removeItem('book-reader-user')
+    }
+  }, [user])
+
+  // Persist book state
+  useEffect(() => {
+    if (book) {
+      localStorage.setItem('book-reader-current-book', JSON.stringify(book))
+    } else {
+      localStorage.removeItem('book-reader-current-book')
+    }
+  }, [book])
+
+  // Persist chapter state
+  useEffect(() => {
+    if (book) {
+      localStorage.setItem('book-reader-current-chapter', currentChapter.toString())
+    } else {
+      localStorage.removeItem('book-reader-current-chapter')
+    }
+  }, [currentChapter, book])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -38,9 +93,11 @@ function AppContent() {
     setUser(newUser)
   }
 
-  const handleBookSelect = (selectedBook: Book) => {
+  const handleBookSelect = (selectedBook: Book & { initialPageIndex?: number }) => {
     setBook(selectedBook)
     setCurrentChapter(0)
+    // If initialPageIndex is provided, pass to BookViewer
+    setInitialPageIndex(selectedBook.initialPageIndex ?? 0)
   }
 
   const handleCloseBook = () => {
@@ -62,6 +119,7 @@ function AppContent() {
         onClose={handleCloseBook}
         onToggleTOC={() => setShowTOC(!showTOC)}
         showTOC={showTOC}
+        initialPageIndex={initialPageIndex}
       />
     )
   }

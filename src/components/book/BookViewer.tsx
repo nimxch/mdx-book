@@ -2,10 +2,12 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, Menu, X, BookOpen, Search, Bookmark, Type, MessageSquare, Book as BookIcon, Share2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Menu, X, BookOpen, Search, Bookmark, Type, MessageSquare, Book as BookIcon, Share2, Home } from "lucide-react"
 import type { Book } from "@/types"
 import { useSettings } from "@/context/SettingsContext"
 import { ProgressBar } from "./ProgressBar"
+import { db } from "@/lib/db"
+import type { BookBookmark } from "@/types"
 
 interface BookViewerProps {
   book: Book
@@ -23,11 +25,14 @@ export function BookViewer({
   onClose,
   onToggleTOC,
   showTOC,
-}: BookViewerProps) {
+  initialPageIndex = 0,
+}: BookViewerProps & { initialPageIndex?: number }) {
   const { theme, fontSize, fontFamily } = useSettings()
   const [showActionMenu, setShowActionMenu] = useState(false)
   const [selectedText, setSelectedText] = useState("")
-  const [currentPageIndex, setCurrentPageIndex] = useState(0)
+  const [currentPageIndex, setCurrentPageIndex] = useState(initialPageIndex)
+  const [isBookmarked, setIsBookmarked] = useState(false)
+  const [bookmarks, setBookmarks] = useState<BookBookmark[]>([])
   const contentRef = useRef<HTMLDivElement>(null)
 
   const currentPage = book.pages[currentPageIndex]
@@ -177,6 +182,49 @@ export function BookViewer({
     return <a {...props} href={href}>{props.children}</a>
   }
 
+  useEffect(() => {
+    // Load single bookmark for this repo
+    db.bookmarks
+      .where({ repoId: `${book.owner}/${book.repo}` })
+      .first()
+      .then((b) => {
+        if (b) {
+          setBookmarks([{ pageIndex: b.pageIndex, chapterIndex: b.chapterIndex, title: b.title, createdAt: b.createdAt }])
+          setIsBookmarked(b.pageIndex === currentPageIndex)
+        } else {
+          setBookmarks([])
+          setIsBookmarked(false)
+        }
+      })
+  }, [book.owner, book.repo, currentPageIndex])
+
+  useEffect(() => {
+    // On mount, jump to bookmarked page if exists
+    db.bookmarks
+      .where({ repoId: `${book.owner}/${book.repo}` })
+      .first()
+      .then((b) => {
+        if (b && b.pageIndex !== undefined) {
+          setCurrentPageIndex(b.pageIndex)
+        }
+      })
+  }, [book.owner, book.repo])
+
+  const handleBookmark = async () => {
+    // Always keep only one bookmark per repo
+    await db.bookmarks.where({ repoId: `${book.owner}/${book.repo}` }).delete()
+    await db.bookmarks.add({
+      id: `${book.owner}/${book.repo}`,
+      repoId: `${book.owner}/${book.repo}`,
+      pageIndex: currentPageIndex,
+      chapterIndex: currentPage.chapterIndex,
+      title: currentPage.title,
+      createdAt: Date.now(),
+    })
+    setIsBookmarked(true)
+    setBookmarks([{ pageIndex: currentPageIndex, chapterIndex: currentPage.chapterIndex, title: currentPage.title, createdAt: Date.now() }])
+  }
+
   return (
     <div className={`h-screen flex flex-col ${getThemeClasses()} transition-colors duration-300`}>
       <ProgressBar book={book} currentChapter={currentChapter} />
@@ -186,11 +234,29 @@ export function BookViewer({
           <Button 
             variant="ghost" 
             size="icon" 
+            onClick={onClose} 
+            className="hover:bg-muted/50"
+            title="Home"
+          >
+            <Home className="w-5 h-5" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
             onClick={onToggleTOC} 
-            className="hover:bg-muted/50 lg:hidden"
+            className="hover:bg-muted/50"
             title="Table of Contents"
           >
             <Menu className="w-5 h-5" />
+          </Button>
+          <Button 
+            variant={isBookmarked ? "default" : "ghost"}
+            size="icon"
+            className={isBookmarked ? "bg-green-600 text-white" : "hover:bg-muted/50"}
+            title={isBookmarked ? "Bookmarked" : "Bookmark this page"}
+            onClick={handleBookmark}
+          >
+            <Bookmark className="w-5 h-5" />
           </Button>
           <Button 
             variant="ghost" 
@@ -199,14 +265,6 @@ export function BookViewer({
             title="Search"
           >
             <Search className="w-5 h-5" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="hover:bg-muted/50 hidden md:inline-flex"
-            title="Bookmark"
-          >
-            <Bookmark className="w-5 h-5" />
           </Button>
           <Button 
             variant="ghost" 
@@ -222,15 +280,7 @@ export function BookViewer({
           {book.title}
         </h1>
 
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onClose} 
-          className="hover:bg-muted/50"
-          title="Close"
-        >
-          <X className="w-5 h-5" />
-        </Button>
+        <div className="w-10"></div>
       </header>
 
       <main className="flex-1 overflow-hidden flex">

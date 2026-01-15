@@ -16,6 +16,16 @@ export interface CachedRepo {
   description: string
   fullName: string
   downloadedAt: number
+  bookmarks?: CachedBookmark[]
+}
+
+export interface CachedBookmark {
+  id: string // repoId:pageIndex
+  repoId: string
+  pageIndex: number
+  chapterIndex: number
+  title: string
+  createdAt: number
 }
 
 export interface CachedChapter {
@@ -54,6 +64,7 @@ class BookReaderDB extends Dexie {
   cachedChapters!: Table<CachedChapter>
   cachedPages!: Table<CachedPage>
   downloadProgress!: Table<DownloadProgress>
+  bookmarks!: Table<CachedBookmark>
 
   constructor() {
     super("BookReaderDB_v2")
@@ -63,6 +74,7 @@ class BookReaderDB extends Dexie {
       cachedChapters: "id, repoId, path, order, [repoId+order]",
       cachedPages: "id, repoId, [repoId+order], [chapterIndex+pageIndex]",
       downloadProgress: "repoId",
+      bookmarks: "id, repoId, pageIndex, chapterIndex, createdAt",
     })
   }
 }

@@ -43,4 +43,12 @@ export interface Book {
   chapters: BookChapter[]
   pages: BookPage[]
   totalChapters: number
+  bookmarks?: BookBookmark[]
+}
+
+export interface BookBookmark {
+  pageIndex: number
+  chapterIndex: number
+  title: string
+  createdAt: number
 }

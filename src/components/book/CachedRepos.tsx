@@ -156,6 +156,13 @@ export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps)
       }
     })
 
+    // Find bookmark for this repo
+    const bookmark = await db.bookmarks.where({ repoId }).first()
+    let initialPageIndex = 0
+    if (bookmark && bookmark.pageIndex !== undefined) {
+      initialPageIndex = bookmark.pageIndex
+    }
+
     const book: Book = {
       title: repo.name,
       description: repo.description || "",
@@ -164,10 +171,17 @@ export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps)
       chapters: bookChapters,
       pages: pages,
       totalChapters: bookChapters.length,
+      bookmarks: bookmark ? [{
+        pageIndex: bookmark.pageIndex,
+        chapterIndex: bookmark.chapterIndex,
+        title: bookmark.title,
+        createdAt: bookmark.createdAt,
+      }] : [],
     }
 
     console.log("Book constructed:", book.title, book.totalChapters, "chapters", pages.length, "pages")
-    onBookSelect(book)
+    // Pass initialPageIndex to BookViewer via onBookSelect
+    onBookSelect({ ...book, initialPageIndex })
   }
 
   const handleDelete = async (repoId: string, e: React.MouseEvent) => {
