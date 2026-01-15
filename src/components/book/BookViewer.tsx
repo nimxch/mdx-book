@@ -36,7 +36,9 @@ export function BookViewer({
   const [showSettings, setShowSettings] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
-  const currentPage = book.pages[currentPageIndex]
+  // Ensure currentPageIndex is within bounds
+  const safePageIndex = Math.max(0, Math.min(currentPageIndex, book.pages.length - 1))
+  const currentPage = book.pages[safePageIndex]
   const totalPages = book.pages.length
 
   const handlePrevious = useCallback(() => {
@@ -192,15 +194,17 @@ export function BookViewer({
     } else {
       // Add bookmark (replacing any existing one for this repo to keep only one "current place" bookmark)
       await db.bookmarks.where({ repoId: `${book.owner}/${book.repo}` }).delete()
-      await db.bookmarks.add({
-        id: `${book.owner}/${book.repo}`,
-        repoId: `${book.owner}/${book.repo}`,
-        pageIndex: currentPageIndex,
-        chapterIndex: currentPage.chapterIndex,
-        title: currentPage.title,
-        createdAt: Date.now(),
-      })
-      setIsBookmarked(true)
+      if (currentPage) {
+        await db.bookmarks.add({
+          id: `${book.owner}/${book.repo}`,
+          repoId: `${book.owner}/${book.repo}`,
+          pageIndex: currentPageIndex,
+          chapterIndex: currentPage.chapterIndex,
+          title: currentPage.title,
+          createdAt: Date.now(),
+        })
+        setIsBookmarked(true)
+      }
     }
   }
 
@@ -442,7 +446,7 @@ export function BookViewer({
                     ),
                   }}
                 >
-                  {currentPage.content}
+                  {currentPage?.content || "No content available"}
                 </ReactMarkdown>
               </div>
             </div>
