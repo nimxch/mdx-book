@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { memo, useEffect, useRef, useMemo } from "react"
 import ReactMarkdown from "react-markdown"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -12,7 +12,7 @@ interface BookViewerProps {
   onClose: () => void
 }
 
-export function BookViewer({
+function BookViewerContent({
   book,
   currentChapter,
   onChapterChange,
@@ -26,6 +26,16 @@ export function BookViewer({
       contentRef.current.scrollTop = 0
     }
   }, [currentChapter])
+
+  const handleLinkClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    const href = event.currentTarget.href
+    if (href && href.startsWith("http")) {
+      event.preventDefault()
+      window.open(href, "_blank", "noopener,noreferrer")
+    }
+  }
+
+  const markdownKey = useMemo(() => `${currentChapter}-${chapter.path}`, [currentChapter, chapter.path])
 
   return (
     <div className="flex h-[calc(100vh-2rem)] gap-4">
@@ -73,8 +83,30 @@ export function BookViewer({
           ref={contentRef}
           className="flex-1 overflow-y-auto p-8 prose prose-slate dark:prose-invert max-w-none"
         >
-          <article className="max-w-2xl mx-auto">
-            <ReactMarkdown>{chapter.content}</ReactMarkdown>
+          <article className="max-w-2xl mx-auto" key={markdownKey}>
+            <ReactMarkdown
+              components={{
+                a: (props) => {
+                  const href = props.href || ""
+                  const isExternal = href.startsWith("http") || href.startsWith("https")
+                  if (isExternal) {
+                    return (
+                      <a
+                        {...props}
+                        onClick={handleLinkClick}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {props.children}
+                      </a>
+                    )
+                  }
+                  return <a {...props}>{props.children}</a>
+                },
+              }}
+            >
+              {chapter.content}
+            </ReactMarkdown>
           </article>
         </CardContent>
 
@@ -105,3 +137,5 @@ export function BookViewer({
     </div>
   )
 }
+
+export const BookViewer = memo(BookViewerContent)

@@ -1,40 +1,56 @@
-import { useState } from "react"
-import { GitHubInput } from "@/components/book/GitHubInput"
+import { useState, useEffect } from "react"
+import { Auth } from "@/components/auth/Auth"
 import { BookViewer } from "@/components/book/BookViewer"
 import { TableOfContents } from "@/components/book/TableOfContents"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Menu, Settings } from "lucide-react"
-import type { Book, GitHubProject } from "@/types"
-import { buildBook } from "@/services/github"
+import { Menu, Settings, Loader2 } from "lucide-react"
+import type { Book } from "@/types"
+import type { User } from "@/lib/db"
+import { CachedRepos } from "@/components/book/CachedRepos"
 
 function App() {
+  const [user, setUser] = useState<User | null>(null)
   const [book, setBook] = useState<Book | null>(null)
   const [currentChapter, setCurrentChapter] = useState(0)
-  const [isLoading, setIsLoading] = useState(false)
   const [showTOC, setShowTOC] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [isDownloading, setIsDownloading] = useState(false)
 
-  const handleProjectLoad = async (project: GitHubProject) => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const loadedBook = await buildBook(project)
-      setBook(loadedBook)
-      setCurrentChapter(0)
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load book"
-      )
-    } finally {
-      setIsLoading(false)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get("code")
+    if (code) {
+      handleOAuthCallback(code)
     }
+  }, [])
+
+  const handleOAuthCallback = async (code: string) => {
+    try {
+      const { handleOAuthCallback: exchangeCode } = await import("@/services/auth")
+      const user = await exchangeCode(code)
+      setUser(user)
+      window.history.replaceState({}, "", window.location.pathname)
+    } catch (error) {
+      console.error("OAuth error:", error)
+    }
+  }
+
+  const handleAuthChange = (newUser: User | null) => {
+    setUser(newUser)
+  }
+
+  const handleBookSelect = (selectedBook: Book) => {
+    setBook(selectedBook)
+    setCurrentChapter(0)
   }
 
   const handleCloseBook = () => {
     setBook(null)
     setCurrentChapter(0)
+  }
+
+  const handleDownloadStart = () => {
+    setIsDownloading(true)
   }
 
   if (book) {
@@ -58,7 +74,7 @@ function App() {
               )}
             </div>
           </div>
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" onClick={handleCloseBook}>
             <Settings className="w-4 h-4" />
           </Button>
         </div>
@@ -93,24 +109,31 @@ function App() {
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold mb-2">GitHub Book Reader</h1>
           <p className="text-muted-foreground">
-            Transform GitHub repositories into beautiful reading experiences
+            Download GitHub repositories for offline reading
           </p>
         </div>
 
-        {error && (
-          <Card className="max-w-2xl mx-auto mb-6">
-            <CardContent className="pt-6">
-              <p className="text-destructive bg-destructive/10 p-3 rounded-md">
-                {error}
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        <div className="max-w-2xl mx-auto space-y-8">
+          {isDownloading && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-center gap-3">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Downloading repository...</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-        <GitHubInput
-          onProjectLoad={handleProjectLoad}
-          isLoading={isLoading}
-        />
+          {user ? (
+            <CachedRepos
+              onBookSelect={handleBookSelect}
+              onDownloadStart={handleDownloadStart}
+            />
+          ) : (
+            <Auth onAuthChange={handleAuthChange} />
+          )}
+        </div>
       </div>
     </div>
   )

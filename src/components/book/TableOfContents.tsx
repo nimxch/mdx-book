@@ -14,6 +14,11 @@ export function TableOfContents({
   onChapterSelect,
   onClose,
 }: TableOfContentsProps) {
+  const handleChapterClick = (index: number) => {
+    onChapterSelect(index)
+    onClose()
+  }
+
   return (
     <Card className="h-full">
       <CardHeader className="pb-3">
@@ -23,11 +28,8 @@ export function TableOfContents({
         <nav className="space-y-1">
           {book.chapters.map((chapter, index) => (
             <button
-              key={chapter.id}
-              onClick={() => {
-                onChapterSelect(index)
-                onClose()
-              }}
+              key={`${chapter.path}-${chapter.id}`}
+              onClick={() => handleChapterClick(index)}
               className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
                 index === currentChapter
                   ? "bg-primary text-primary-foreground"
