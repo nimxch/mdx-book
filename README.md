@@ -4,6 +4,8 @@
 
 **Read repositories the way they deserve to be read—beautifully, offline, on your terms.**
 
+🚀 **[Try it Live](https://markbooknow.vercel.app/)**
+
 MarkBook is a specialized reader that instantly converts GitHub markdown repositories into organized, offline-ready electronic books. It is built with a "Local-First" architecture, ensuring your reading data and tokens never leave your device.
 
 ## Features
