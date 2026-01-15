@@ -212,12 +212,44 @@ export async function downloadRepository(
     status: "completed",
   })
 
+  const pages = divideIntoPages(validChapters)
+  console.log(`\n=== TOTAL PAGES: ${pages.length} ===`)
+  console.log(`\n=== FIRST 5 PAGES ===`)
+  for (let i = 0; i < Math.min(5, pages.length); i++) {
+    const page = pages[i]
+    console.log(`\n--- Page ${i + 1} ---`)
+    console.log(`Chapter: ${page.chapterIndex + 1} - ${page.title}`)
+    console.log(`Page within chapter: ${page.pageIndex + 1}`)
+    console.log(`Content length: ${page.contentLength} chars`)
+    console.log(`Preview: ${page.contentPreview}`)
+  }
+
+  for (let i = 0; i < pages.length; i++) {
+    const page = pages[i]
+    try {
+      await db.cachedPages.put({
+        id: `${repoId}-page-${i}`,
+        repoId,
+        chapterIndex: page.chapterIndex,
+        pageIndex: page.pageIndex,
+        title: page.title,
+        content: page.content,
+        contentPreview: page.contentPreview,
+        contentLength: page.contentLength,
+        order: i,
+      })
+    } catch (error) {
+      console.error(`Failed to save page ${i} to DB:`, error)
+    }
+  }
+
   return {
     title: repoInfo.name,
     description: repoInfo.description,
     owner: project.owner,
     repo: project.repo,
     chapters: validChapters,
+    pages,
     totalChapters: validChapters.length,
   }
 }
@@ -231,12 +263,25 @@ export async function loadBookFromCache(repoId: string): Promise<Book | null> {
     .equals(repoId)
     .sortBy("order")
 
+  const pages = await db.cachedPages
+    .where("repoId")
+    .equals(repoId)
+    .sortBy("order")
+
   return {
     title: repo.name,
     description: repo.description,
     owner: repo.owner,
     repo: repo.repo,
     chapters,
+    pages: pages.map(p => ({
+      chapterIndex: p.chapterIndex,
+      pageIndex: p.pageIndex,
+      title: p.title,
+      content: p.content,
+      contentPreview: p.contentPreview,
+      contentLength: p.contentLength,
+    })),
     totalChapters: chapters.length,
   }
 }
@@ -247,6 +292,7 @@ export async function getCachedRepos(): Promise<Array<{ id: string; name: string
 
 export async function deleteCachedRepo(repoId: string): Promise<void> {
   await db.cachedChapters.where("repoId").equals(repoId).delete()
+  await db.cachedPages.where("repoId").equals(repoId).delete()
   await db.cachedRepos.delete(repoId)
   await db.downloadProgress.delete(repoId)
 }
@@ -317,10 +363,76 @@ export async function buildBook(project: GitHubProject): Promise<Book> {
 
   const repoInfo = await getRepositoryInfo(project)
 
+  const pages = divideIntoPages(chapters)
+
+  console.log(`\n=== TOTAL PAGES: ${pages.length} ===`)
+  console.log(`\n=== FIRST 5 PAGES ===`)
+  for (let i = 0; i < Math.min(5, pages.length); i++) {
+    const page = pages[i]
+    console.log(`\n--- Page ${i + 1} ---`)
+    console.log(`Chapter: ${page.chapterIndex + 1} - ${page.title}`)
+    console.log(`Page within chapter: ${page.pageIndex + 1}`)
+    console.log(`Content length: ${page.contentLength} chars`)
+    console.log(`Preview: ${page.contentPreview}`)
+  }
+
   return {
     title: repoInfo.name,
     description: repoInfo.description,
+    owner: project.owner,
+    repo: project.repo,
     chapters,
+    pages,
     totalChapters: chapters.length,
   }
+}
+
+function divideIntoPages(chapters: BookChapter[], _containerWidth = 1000): import("@/types").BookPage[] {
+  const CHARS_PER_PAGE = 2000
+  const pages: import("@/types").BookPage[] = []
+
+  for (let chapterIndex = 0; chapterIndex < chapters.length; chapterIndex++) {
+    const chapter = chapters[chapterIndex]
+    const content = chapter.content
+
+    const paragraphs = content.split(/\n\n+/)
+
+    let currentPageContent = ""
+    let pageIndex = 0
+
+    for (const paragraph of paragraphs) {
+      if (currentPageContent.length + paragraph.length + 2 > CHARS_PER_PAGE && currentPageContent.length > 0) {
+        const preview = currentPageContent.replace(/\n/g, " ").substring(0, 200)
+        pages.push({
+          chapterIndex,
+          pageIndex,
+          title: chapter.title,
+          content: currentPageContent,
+          contentPreview: preview + (currentPageContent.length > 200 ? "..." : ""),
+          contentLength: currentPageContent.length
+        })
+        pageIndex++
+        currentPageContent = ""
+      }
+
+      if (currentPageContent.length > 0) {
+        currentPageContent += "\n\n"
+      }
+      currentPageContent += paragraph
+    }
+
+    if (currentPageContent.length > 0) {
+      const preview = currentPageContent.replace(/\n/g, " ").substring(0, 200)
+      pages.push({
+        chapterIndex,
+        pageIndex,
+        title: chapter.title,
+        content: currentPageContent,
+        contentPreview: preview + (currentPageContent.length > 200 ? "..." : ""),
+        contentLength: currentPageContent.length
+      })
+    }
+  }
+
+  return pages
 }

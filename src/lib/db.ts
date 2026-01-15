@@ -28,6 +28,18 @@ export interface CachedChapter {
   order: number
 }
 
+export interface CachedPage {
+  id: string
+  repoId: string
+  chapterIndex: number
+  pageIndex: number
+  title: string
+  content: string
+  contentPreview: string
+  contentLength: number
+  order: number
+}
+
 export interface DownloadProgress {
   repoId: string
   current: number
@@ -40,14 +52,16 @@ class BookReaderDB extends Dexie {
   users!: Table<User>
   cachedRepos!: Table<CachedRepo>
   cachedChapters!: Table<CachedChapter>
+  cachedPages!: Table<CachedPage>
   downloadProgress!: Table<DownloadProgress>
 
   constructor() {
-    super("BookReaderDB")
+    super("BookReaderDB_v2")
     this.version(1).stores({
       users: "++id, login",
       cachedRepos: "id, owner, repo, fullName",
       cachedChapters: "id, repoId, path, order, [repoId+order]",
+      cachedPages: "id, repoId, [repoId+order], [chapterIndex+pageIndex]",
       downloadProgress: "repoId",
     })
   }

@@ -26,11 +26,21 @@ export interface BookChapter {
   order: number
 }
 
+export interface BookPage {
+  chapterIndex: number
+  pageIndex: number
+  title: string
+  content: string
+  contentPreview: string
+  contentLength: number
+}
+
 export interface Book {
   title: string
   description?: string
   owner: string
   repo: string
   chapters: BookChapter[]
+  pages: BookPage[]
   totalChapters: number
 }
