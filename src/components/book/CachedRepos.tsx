@@ -57,7 +57,16 @@ export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps)
       onBookSelect(book)
       setUrl("")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to download")
+      console.error("Download error:", err)
+      const message = err instanceof Error ? err.message : "Failed to download"
+      
+      if (message.includes("Failed to fetch")) {
+        setError("Network error: Unable to reach GitHub. Please check your internet connection or URL.")
+      } else if (message.includes("404")) {
+         setError("Repository not found or is private. If private, please sign in with a token.")
+      } else {
+        setError(message)
+      }
     } finally {
       setIsDownloading(false)
       setDownloadProgress(null)

@@ -369,7 +369,7 @@ export function BookViewer({
                         node.children[0]?.tagName === 'img'
                       
                       if (hasOnlyImage) {
-                        return <>{children}</>
+                        return null
                       }
                       
                       return <p className="mb-5 leading-[1.8]">{children}</p>
@@ -381,7 +381,7 @@ export function BookViewer({
                       <ol className="list-decimal list-inside mb-5 space-y-2">{children}</ol>
                     ),
                     li: ({ children }) => (
-                      <li className="ml-4">{children}</li>
+                      <li className="ml-4 [&>p]:mb-2 [&>p]:inline">{children}</li>
                     ),
                     blockquote: ({ children }) => (
                       <blockquote className="border-l-4 border-primary pl-4 italic my-6 bg-muted/30 py-3 pr-3 rounded-r">
@@ -440,36 +440,7 @@ export function BookViewer({
                         {children}
                       </pre>
                     ),
-                    img: ({ src, alt }) => {
-                      if (!src || src.trim() === "") {
-                        return null
-                      }
-                      
-                      const hasCaption = alt && alt.trim() !== ""
-                      if (hasCaption) {
-                        return (
-                          <figure className="my-8">
-                            <img
-                              src={src}
-                              alt={alt}
-                              className="rounded-lg max-w-full h-auto shadow-sm"
-                              loading="lazy"
-                            />
-                            <figcaption className="text-center text-sm text-muted-foreground mt-3">
-                              {alt}
-                            </figcaption>
-                          </figure>
-                        )
-                      }
-                      return (
-                        <img
-                          src={src}
-                          alt={alt || ""}
-                          className="rounded-lg max-w-full h-auto shadow-sm my-6"
-                          loading="lazy"
-                        />
-                      )
-                    },
+                    img: () => null,
                     hr: () => <hr className="my-10 border-border/30" />,
                     strong: ({ children }) => (
                       <strong className="font-semibold text-foreground">{children}</strong>
