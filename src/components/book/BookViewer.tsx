@@ -185,17 +185,23 @@ export function BookViewer({
   }, [book.owner, book.repo])
 
   const handleBookmark = async () => {
-    // Always keep only one bookmark per repo
-    await db.bookmarks.where({ repoId: `${book.owner}/${book.repo}` }).delete()
-    await db.bookmarks.add({
-      id: `${book.owner}/${book.repo}`,
-      repoId: `${book.owner}/${book.repo}`,
-      pageIndex: currentPageIndex,
-      chapterIndex: currentPage.chapterIndex,
-      title: currentPage.title,
-      createdAt: Date.now(),
-    })
-    setIsBookmarked(true)
+    if (isBookmarked) {
+      // Remove bookmark
+      await db.bookmarks.where({ repoId: `${book.owner}/${book.repo}` }).delete()
+      setIsBookmarked(false)
+    } else {
+      // Add bookmark (replacing any existing one for this repo to keep only one "current place" bookmark)
+      await db.bookmarks.where({ repoId: `${book.owner}/${book.repo}` }).delete()
+      await db.bookmarks.add({
+        id: `${book.owner}/${book.repo}`,
+        repoId: `${book.owner}/${book.repo}`,
+        pageIndex: currentPageIndex,
+        chapterIndex: currentPage.chapterIndex,
+        title: currentPage.title,
+        createdAt: Date.now(),
+      })
+      setIsBookmarked(true)
+    }
   }
 
   const handleZenMode = () => {
