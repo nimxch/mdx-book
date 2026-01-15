@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react"
 import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight, Menu, X, BookOpen, Search, Bookmark, Type, MessageSquare, Book as BookIcon, Share2 } from "lucide-react"
 import type { Book } from "@/types"
@@ -270,14 +271,15 @@ export function BookViewer({
         <div className="flex-1 overflow-hidden relative flex flex-row">
           <div className="flex-1 overflow-hidden relative w-full">
             <div
-              className={`h-full ${getFontFamilyClass()} overflow-y-auto px-12 py-8`}
+              className={`h-full ${getFontFamilyClass()} overflow-y-auto px-8 md:px-12 lg:px-24 py-8 pb-24 md:pb-28`}
               onMouseUp={handleTextSelection}
               onTouchEnd={handleTextSelection}
-              style={{ textAlign: 'justify', textJustify: 'inter-word' }}
+              style={{ textAlign: 'justify', textJustify: 'inter-word', scrollBehavior: 'smooth' }}
             >
               {currentPage && (
                 <div className={`${getFontSizeClass()} prose-custom`}>
                   <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
                     components={{
                       a: renderLink,
                       h1: ({ children }) => (
@@ -316,6 +318,38 @@ export function BookViewer({
                         <blockquote className="border-l-4 border-primary pl-4 italic my-6 bg-muted/30 py-3 pr-3 rounded-r">
                           {children}
                         </blockquote>
+                      ),
+                      table: ({ children }) => (
+                        <div className="overflow-x-auto my-6">
+                          <table className="min-w-full border-collapse border border-border">
+                            {children}
+                          </table>
+                        </div>
+                      ),
+                      thead: ({ children }) => (
+                        <thead className="bg-muted">
+                          {children}
+                        </thead>
+                      ),
+                      tbody: ({ children }) => (
+                        <tbody className="divide-y divide-border">
+                          {children}
+                        </tbody>
+                      ),
+                      tr: ({ children }) => (
+                        <tr className="border-b border-border">
+                          {children}
+                        </tr>
+                      ),
+                      th: ({ children }) => (
+                        <th className="px-4 py-2 text-left font-semibold text-foreground border border-border">
+                          {children}
+                        </th>
+                      ),
+                      td: ({ children }) => (
+                        <td className="px-4 py-2 border border-border text-foreground">
+                          {children}
+                        </td>
                       ),
                       code: (props) => {
                         const { inline, className, children } = props as { inline?: boolean; className?: string; children?: React.ReactNode }
@@ -410,21 +444,22 @@ export function BookViewer({
           )}
 
           <div className="absolute bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border/20">
-            <div className="max-w-5xl mx-auto px-8 py-4">
-              <div className="flex items-center justify-between">
+            <div className="max-w-5xl mx-auto px-4 md:px-8 py-3 md:py-4">
+              <div className="flex items-center justify-between gap-4">
                 <Button
                   variant="ghost"
                   onClick={handlePrevious}
                   disabled={currentPageIndex === 0}
-                  className="gap-2 hover:bg-muted/50"
+                  className="gap-2 hover:bg-muted/50 text-xs md:text-sm flex-shrink-0"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                  Previous
+                  <span className="hidden sm:inline">Previous</span>
                 </Button>
 
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">
-                    {currentPage?.title} • Page {currentPageIndex + 1} of {totalPages}
+                <div className="text-center flex-1 min-w-0">
+                  <p className="text-xs md:text-sm text-muted-foreground truncate px-2">
+                    <span className="hidden sm:inline">{currentPage?.title} • </span>
+                    <span>Page {currentPageIndex + 1} of {totalPages}</span>
                   </p>
                 </div>
 
@@ -432,9 +467,9 @@ export function BookViewer({
                   variant="ghost"
                   onClick={handleNext}
                   disabled={currentPageIndex >= totalPages - 1}
-                  className="gap-2 hover:bg-muted/50"
+                  className="gap-2 hover:bg-muted/50 text-xs md:text-sm flex-shrink-0"
                 >
-                  Next
+                  <span className="hidden sm:inline">Next</span>
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>

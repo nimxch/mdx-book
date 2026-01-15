@@ -92,27 +92,68 @@ export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps)
       order: ch.order,
     }))
 
-    // Generate pages from chapters (split long content into pages)
+    // Split chapters into pages while respecting markdown structure
     const pages: BookPage[] = []
     bookChapters.forEach((chapter, chapterIndex) => {
       const content = chapter.content || ""
-      // Split content into chunks (approximately 3000 chars per page)
-      const chunkSize = 3000
-      const chunks = []
-      for (let i = 0; i < content.length; i += chunkSize) {
-        chunks.push(content.substring(i, i + chunkSize))
-      }
       
-      chunks.forEach((pageContent, pageIndex) => {
+      // Split by double newlines (paragraphs/sections) to respect markdown structure
+      const blocks = content.split(/\n\n+/)
+      const wordsPerPage = 450
+      
+      let currentPageContent: string[] = []
+      let currentWordCount = 0
+      let pageIndex = 0
+      
+      blocks.forEach((block, blockIndex) => {
+        const blockWords = block.split(/\s+/).filter(w => w.length > 0).length
+        
+        // If adding this block exceeds word limit and we have content, create a page
+        if (currentWordCount + blockWords > wordsPerPage && currentPageContent.length > 0) {
+          const pageContent = currentPageContent.join('\n\n')
+          pages.push({
+            chapterIndex,
+            pageIndex,
+            title: chapter.title,
+            content: pageContent,
+            contentPreview: pageContent.substring(0, 100),
+            contentLength: pageContent.length,
+          })
+          
+          pageIndex++
+          currentPageContent = [block]
+          currentWordCount = blockWords
+        } else {
+          // Add block to current page
+          currentPageContent.push(block)
+          currentWordCount += blockWords
+        }
+        
+        // If this is the last block, create a page with remaining content
+        if (blockIndex === blocks.length - 1 && currentPageContent.length > 0) {
+          const pageContent = currentPageContent.join('\n\n')
+          pages.push({
+            chapterIndex,
+            pageIndex,
+            title: chapter.title,
+            content: pageContent,
+            contentPreview: pageContent.substring(0, 100),
+            contentLength: pageContent.length,
+          })
+        }
+      })
+      
+      // If chapter was empty or had no blocks, add an empty page
+      if (pages.filter(p => p.chapterIndex === chapterIndex).length === 0) {
         pages.push({
           chapterIndex,
-          pageIndex,
+          pageIndex: 0,
           title: chapter.title,
-          content: pageContent,
-          contentPreview: pageContent.substring(0, 100),
-          contentLength: pageContent.length,
+          content: content,
+          contentPreview: content.substring(0, 100),
+          contentLength: content.length,
         })
-      })
+      }
     })
 
     const book: Book = {
