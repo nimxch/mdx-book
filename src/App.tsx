@@ -10,8 +10,9 @@ import { SettingsProvider, useSettings } from "@/context/SettingsContext"
 import { FeaturesPage } from "@/components/pages/FeaturesPage"
 import { PrivacyPage } from "@/components/pages/PrivacyPage"
 import { ContactPage } from "@/components/pages/ContactPage"
+import { SpeedInsightsPage } from "@/components/pages/SpeedInsightsPage"
 
-type ViewState = 'dashboard' | 'features' | 'privacy' | 'contact'
+type ViewState = 'dashboard' | 'features' | 'privacy' | 'contact' | 'speed-insights'
 
 function AppContent() {
   const [user, setUser] = useState<User | null>(null)
@@ -187,6 +188,8 @@ function AppContent() {
            <PrivacyPage onBack={() => setCurrentView('dashboard')} />
         ) : currentView === 'contact' ? (
            <ContactPage onBack={() => setCurrentView('dashboard')} />
+        ) : currentView === 'speed-insights' ? (
+           <SpeedInsightsPage onBack={() => setCurrentView('dashboard')} />
         ) : (
           <>
             {/* Download Progress Card */}
@@ -249,6 +252,7 @@ function AppContent() {
                 <h4 className="font-medium text-sm mb-4 text-foreground">Project</h4>
                 <ul className="space-y-2 text-xs text-muted-foreground">
                   <li><a href="https://github.com/nimxch/mdx-book" target="_blank" rel="noopener noreferrer" className="hover:text-green-600 transition-colors">GitHub</a></li>
+                  <li><button onClick={() => setCurrentView('speed-insights')} className="hover:text-green-600 transition-colors text-left">Speed Insights</button></li>
                   <li><button onClick={() => setCurrentView('privacy')} className="hover:text-green-600 transition-colors text-left">Privacy</button></li>
                   <li><button onClick={() => setCurrentView('contact')} className="hover:text-green-600 transition-colors text-left">Contact</button></li>
                 </ul>
