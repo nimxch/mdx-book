@@ -2,12 +2,11 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, Menu, X, BookOpen, Bookmark, Type, MessageSquare, Book as BookIcon, Share2, Home, Maximize2, Minimize2, ChevronDown } from "lucide-react"
+import { ChevronLeft, ChevronRight, Bookmark, Type, MessageSquare, Share2, Home, Maximize2, ChevronDown, Book as BookIcon } from "lucide-react"
 import type { Book } from "@/types"
 import { useSettings } from "@/context/SettingsContext"
 import { ProgressBar } from "./ProgressBar"
 import { db } from "@/lib/db"
-import type { BookBookmark } from "@/types"
 
 interface BookViewerProps {
   book: Book
@@ -31,7 +30,7 @@ export function BookViewer({
   const [selectedText, setSelectedText] = useState("")
   const [currentPageIndex, setCurrentPageIndex] = useState(initialPageIndex)
   const [isBookmarked, setIsBookmarked] = useState(false)
-  const [bookmarks, setBookmarks] = useState<BookBookmark[]>([])
+
   const [zenMode, setZenMode] = useState(false)
   const [showDownArrow, setShowDownArrow] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -166,10 +165,8 @@ export function BookViewer({
       .first()
       .then((b) => {
         if (b) {
-          setBookmarks([{ pageIndex: b.pageIndex, chapterIndex: b.chapterIndex, title: b.title, createdAt: b.createdAt }])
           setIsBookmarked(b.pageIndex === currentPageIndex)
         } else {
-          setBookmarks([])
           setIsBookmarked(false)
         }
       })
@@ -199,7 +196,6 @@ export function BookViewer({
       createdAt: Date.now(),
     })
     setIsBookmarked(true)
-    setBookmarks([{ pageIndex: currentPageIndex, chapterIndex: currentPage.chapterIndex, title: currentPage.title, createdAt: Date.now() }])
   }
 
   const handleZenMode = () => {
@@ -249,17 +245,7 @@ export function BookViewer({
     return () => window.removeEventListener('resize', handleResize)
   }, [zenMode])
 
-  const handleScroll = (direction: 'up' | 'down') => {
-    if (contentRef.current) {
-      const scrollStep = 100
-      const { scrollTop } = contentRef.current
-      if (direction === 'up') {
-        contentRef.current.scrollTo({ top: scrollTop - scrollStep, behavior: 'smooth' })
-      } else {
-        contentRef.current.scrollTo({ top: scrollTop + scrollStep, behavior: 'smooth' })
-      }
-    }
-  }
+
 
   useEffect(() => {
     const checkOverflow = () => {

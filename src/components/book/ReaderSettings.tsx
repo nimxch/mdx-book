@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, Sun, Moon, BookOpen, Type, Check } from "lucide-react"
+import { Sun, Moon, BookOpen, Type, Check } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useSettings, type Theme, type FontSize, type FontFamily } from "@/context/SettingsContext"
 
