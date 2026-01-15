@@ -61,7 +61,9 @@ export function CachedRepos({ onBookSelect, onDownloadStart, onDownloadEnd }: Ca
       console.error("Download error:", err)
       const message = err instanceof Error ? err.message : "Failed to download"
       
-      if (message.includes("Failed to fetch")) {
+      if (message.includes("rate limit exceeded") || message.includes("API rate limit")) {
+        setError("GitHub API rate limit exceeded. Please sign in with your GitHub account to get higher rate limits.")
+      } else if (message.includes("Failed to fetch")) {
         setError("Network error: Unable to reach GitHub. Please check your internet connection or URL.")
       } else if (message.includes("404")) {
          setError("Repository not found or is private. If private, please sign in with a token.")

@@ -46,9 +46,24 @@ export async function getRepositoryContent(
   const response = await fetchWithAuth(url)
   if (!response.ok) {
     const text = await response.text()
-    if (text.startsWith("<")) {
-      throw new Error(`GitHub API error (rate limit or not found): ${response.status} ${response.statusText}`)
+    
+    // Try to parse as JSON to get detailed error message
+    try {
+      const errorData = JSON.parse(text)
+      if (errorData.message) {
+        // Check for rate limit error
+        if (errorData.message.includes("rate limit exceeded") || errorData.message.includes("API rate limit")) {
+          throw new Error(`GitHub API rate limit exceeded. Please authenticate with GitHub to get higher rate limits. ${errorData.documentation_url || ""}`)
+        }
+        throw new Error(`GitHub API error: ${errorData.message}`)
+      }
+    } catch (parseError) {
+      // If not JSON, handle as before
+      if (text.startsWith("<")) {
+        throw new Error(`GitHub API error (rate limit or not found): ${response.status} ${response.statusText}`)
+      }
     }
+    
     throw new Error(`Failed to fetch repository content: ${response.statusText}`)
   }
 
