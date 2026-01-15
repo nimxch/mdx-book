@@ -16,12 +16,15 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
 }
 
 :root {
   font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
+  font-size: var(--typography-size, 16px);
 
   color-scheme: light dark;
   font-synthesis: none;

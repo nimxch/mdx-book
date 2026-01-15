@@ -2,8 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { ChevronLeft, ChevronRight, Menu, X, BookOpen, Search, Bookmark, Type, MessageSquare, Book as BookIcon, Share2, Home, Maximize2, Minimize2, ChevronDown } from "lucide-react"
+import { ChevronLeft, ChevronRight, Menu, X, BookOpen, Bookmark, Type, MessageSquare, Book as BookIcon, Share2, Home, Maximize2, Minimize2, ChevronDown } from "lucide-react"
 import type { Book } from "@/types"
 import { useSettings } from "@/context/SettingsContext"
 import { ProgressBar } from "./ProgressBar"
@@ -17,6 +16,8 @@ interface BookViewerProps {
   onClose: () => void
   showTOC: boolean
 }
+
+import { ReaderSettings } from "@/components/book/ReaderSettings"
 
 export function BookViewer({
   book,
@@ -33,11 +34,7 @@ export function BookViewer({
   const [bookmarks, setBookmarks] = useState<BookBookmark[]>([])
   const [zenMode, setZenMode] = useState(false)
   const [showDownArrow, setShowDownArrow] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [searchResults, setSearchResults] = useState<number[]>([])
-  const [searchMode, setSearchMode] = useState<'page' | 'repo'>("page")
-  const [fontOption, setFontOption] = useState<'serif' | 'sans' | 'mono'>(fontFamily || 'serif')
-  const [activeSearchIndex, setActiveSearchIndex] = useState(0)
+  const [showSettings, setShowSettings] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
   const currentPage = book.pages[currentPageIndex]
@@ -136,25 +133,6 @@ export function BookViewer({
     }
     setShowActionMenu(false)
   }
-
-  const getFontSizeClass = () => {
-    switch (fontSize) {
-      case "sm": return "prose-sm"
-      case "lg": return "prose-lg"
-      case "xl": return "prose-xl"
-      default: return "prose-base"
-    }
-  }
-
-  const getFontFamilyClass = () => {
-    switch (fontFamily) {
-      case "sans": return "font-sans"
-      case "mono": return "font-mono"
-      default: return "font-serif"
-    }
-  }
-
-
 
   const renderLink = (props: { href?: string; children?: React.ReactNode }) => {
     const href = props.href || ""
@@ -303,41 +281,12 @@ export function BookViewer({
     }
   }, [currentPageIndex, book, zenMode])
 
-  // Search logic
-  useEffect(() => {
-    if (!searchTerm) {
-      setSearchResults([])
-      setActiveSearchIndex(0)
-      return
-    }
-    let results: number[] = []
-    if (searchMode === 'page') {
-      const content = currentPage.content.toLowerCase()
-      let idx = content.indexOf(searchTerm.toLowerCase())
-      while (idx !== -1) {
-        results.push(idx)
-        idx = content.indexOf(searchTerm.toLowerCase(), idx + 1)
-      }
-    } else {
-      // repo search: find all page indices containing the term
-      results = book.pages
-        .map((p, i) => p.content.toLowerCase().includes(searchTerm.toLowerCase()) ? i : -1)
-        .filter(i => i !== -1)
-    }
-    setSearchResults(results)
-    setActiveSearchIndex(0)
-  }, [searchTerm, searchMode, currentPage, book.pages])
-
-  // Font change logic
-  useEffect(() => {
-    // Optionally persist fontOption in localStorage or context
-  }, [fontOption])
-
   return (
     <div className={`h-screen flex flex-col font-${fontFamily} bg-background text-foreground transition-colors duration-300${zenMode ? ' zen-mode-active' : ''}`} data-theme={theme} data-font-size={fontSize} data-font-family={fontFamily}>
       <ProgressBar book={book} currentChapter={currentChapter} />
 
-      <header className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-border/30 backdrop-blur-sm bg-background/95 sticky top-0 z-10 transition-colors duration-300">
+
+      <header className={`flex items-center justify-between px-4 md:px-6 py-4 border-b border-border/30 backdrop-blur-sm bg-background/95 sticky top-0 z-10 transition-colors duration-300 ${zenMode ? 'hidden' : ''}`}>
         <div className="flex items-center gap-1">
           <Button 
             variant="ghost" 
@@ -352,10 +301,10 @@ export function BookViewer({
             variant={zenMode ? "default" : "ghost"}
             size="icon"
             className={zenMode ? "bg-green-600 text-white" : "hover:bg-muted/50"}
-            title={zenMode ? "Exit Fullscreen" : "Zen Mode (Fullscreen)"}
+            title="Zen Mode (Fullscreen)"
             onClick={handleZenMode}
           >
-            {zenMode ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+             <Maximize2 className="w-5 h-5" />
           </Button>
           <Button 
             variant={isBookmarked ? "default" : "ghost"}
@@ -366,54 +315,24 @@ export function BookViewer({
           >
             <Bookmark className="w-5 h-5" />
           </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="hover:bg-muted/50 hidden md:inline-flex"
-            title="Search"
-          >
-            <Search className="w-5 h-5" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="hover:bg-muted/50 hidden md:inline-flex"
-            title="Font Settings"
-          >
-            <Type className="w-5 h-5" />
-          </Button>
+          <div className="relative">
+            <Button 
+              variant={showSettings ? "default" : "ghost"} 
+              size="icon" 
+              onClick={() => setShowSettings(!showSettings)}
+              className={showSettings ? "bg-green-600 text-white" : "hover:bg-muted/50"}
+              title="Settings"
+            >
+              <Type className="w-5 h-5" />
+            </Button>
+            <ReaderSettings isOpen={showSettings} onClose={() => setShowSettings(false)} />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Input
-            type="text"
-            placeholder={searchMode === 'page' ? "Search in page..." : "Search in repo..."}
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-40 text-sm"
-          />
-          <Button
-            variant={searchMode === 'page' ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setSearchMode('page')}
-          >Page</Button>
-          <Button
-            variant={searchMode === 'repo' ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setSearchMode('repo')}
-          >Repo</Button>
-          <select
-            value={fontOption}
-            onChange={e => setFontOption(e.target.value as any)}
-            className="ml-2 border rounded px-2 py-1 text-sm"
-          >
-            <option value="serif">Serif</option>
-            <option value="sans">Sans</option>
-            <option value="mono">Mono</option>
-          </select>
-        </div>
-        <h1 className="flex-1 text-center px-4 text-sm md:text-base font-medium text-foreground truncate">
+        
+        <h1 className="flex-1 text-center px-4 text-sm md:text-base font-medium text-foreground truncate select-none">
           {book.title}
         </h1>
+
         <div className="w-10"></div>
       </header>
 
@@ -422,23 +341,12 @@ export function BookViewer({
           <div className="flex-1 overflow-hidden relative w-full">
             <div
               ref={contentRef}
-              className={`h-full font-${fontOption} ${getFontFamilyClass()} overflow-y-auto no-scrollbar px-8 md:px-12 lg:px-24 py-8 pb-24 md:pb-28${zenMode ? ' bg-background' : ''}`}
+              className={`h-full font-${fontFamily} overflow-y-auto no-scrollbar px-8 md:px-12 lg:px-24 py-8 pb-24 md:pb-28${zenMode ? ' bg-background' : ''}`}
               onMouseUp={handleTextSelection}
               onTouchEnd={handleTextSelection}
               style={{ textAlign: 'justify', textJustify: 'inter-word', scrollBehavior: 'smooth', position: 'relative' }}
             >
-              {/* Highlight search results in page */}
-              {searchTerm && searchMode === 'page' ? (
-                <div className="bg-yellow-100">
-                  {currentPage.content.split(new RegExp(`(${searchTerm})`, 'gi')).map((part, i) =>
-                    part.toLowerCase() === searchTerm.toLowerCase() ? (
-                      <mark key={i} className="bg-yellow-300 text-black">{part}</mark>
-                    ) : (
-                      <span key={i}>{part}</span>
-                    )
-                  )}
-                </div>
-              ) : (
+              <div className="max-w-3xl mx-auto leading-relaxed min-h-screen">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
@@ -573,15 +481,7 @@ export function BookViewer({
                 >
                   {currentPage.content}
                 </ReactMarkdown>
-              )}
-              {/* Repo search navigation */}
-              {searchTerm && searchMode === 'repo' && searchResults.length > 0 && (
-                <div className="fixed left-1/2 bottom-24 z-30 flex gap-2 items-center" style={{ transform: 'translateX(-50%)' }}>
-                  <Button size="sm" onClick={() => setCurrentPageIndex(searchResults[Math.max(activeSearchIndex - 1, 0)])} disabled={activeSearchIndex === 0}>Prev</Button>
-                  <span className="text-xs">{activeSearchIndex + 1} / {searchResults.length}</span>
-                  <Button size="sm" onClick={() => setCurrentPageIndex(searchResults[Math.min(activeSearchIndex + 1, searchResults.length - 1)])} disabled={activeSearchIndex === searchResults.length - 1}>Next</Button>
-                </div>
-              )}
+              </div>
             </div>
           </div>
 

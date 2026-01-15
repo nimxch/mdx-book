@@ -44,6 +44,7 @@ export interface Book {
   pages: BookPage[]
   totalChapters: number
   bookmarks?: BookBookmark[]
+  initialPageIndex?: number
 }
 
 export interface BookBookmark {
