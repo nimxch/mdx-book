@@ -40,6 +40,7 @@ function App() {
   }
 
   const handleBookSelect = (selectedBook: Book) => {
+    console.log("Book selected:", selectedBook.title, "chapters:", selectedBook.chapters.length)
     setBook(selectedBook)
     setCurrentChapter(0)
   }
@@ -94,7 +95,10 @@ function App() {
             <BookViewer
               book={book}
               currentChapter={currentChapter}
-              onChapterChange={setCurrentChapter}
+              onChapterChange={(chapter) => {
+                console.log("Chapter changed to:", chapter)
+                setCurrentChapter(chapter)
+              }}
               onClose={handleCloseBook}
             />
           </div>

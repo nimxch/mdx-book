@@ -23,6 +23,7 @@ export interface CachedChapter {
   repoId: string
   title: string
   content: string
+  contentSize: number
   path: string
   order: number
 }
@@ -46,7 +47,7 @@ class BookReaderDB extends Dexie {
     this.version(1).stores({
       users: "++id, login",
       cachedRepos: "id, owner, repo, fullName",
-      cachedChapters: "++id, repoId, path",
+      cachedChapters: "id, repoId, path, order, [repoId+order]",
       downloadProgress: "repoId",
     })
   }

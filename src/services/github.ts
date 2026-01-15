@@ -4,9 +4,9 @@ import { getAccessToken } from "@/services/auth"
 
 const GITHUB_API_BASE = "https://api.github.com"
 
-async function fetchWithAuth(url: string): Promise<Response> {
+async function fetchWithAuth(url: string, accept = "application/vnd.github.v3+json"): Promise<Response> {
   const headers: HeadersInit = {
-    Accept: "application/vnd.github.v3+json",
+    Accept: accept,
   }
 
   const token = getAccessToken()
@@ -15,6 +15,24 @@ async function fetchWithAuth(url: string): Promise<Response> {
   }
 
   return fetch(url, { headers })
+}
+
+export async function getFileContent(
+  owner: string,
+  repo: string,
+  path: string,
+  _sha: string,
+  branch = "main"
+): Promise<string> {
+  const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
+
+  const response = await fetchWithAuth(url, "application/vnd.github.raw")
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(`Failed to fetch file content: ${response.statusText}. URL: ${url}. Response: ${text.substring(0, 200)}`)
+  }
+
+  return response.text()
 }
 
 export async function getRepositoryContent(
@@ -41,30 +59,6 @@ export async function getRepositoryContent(
   return Array.isArray(data) ? data : [data]
 }
 
-export async function getFileContent(
-  owner: string,
-  repo: string,
-  path: string,
-  _sha: string,
-  branch = "main"
-): Promise<string> {
-  const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
-
-  const response = await fetchWithAuth(url)
-  if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`Failed to fetch file content: ${response.statusText}. Response: ${text.substring(0, 200)}`)
-  }
-
-  const contentType = response.headers.get("content-type") || ""
-  if (!contentType.includes("application/json")) {
-    throw new Error(`Expected JSON but got ${contentType}`)
-  }
-
-  const data = await response.json()
-  return atob(data.content)
-}
-
 export async function getMarkdownFiles(
   project: GitHubProject
 ): Promise<MarkdownFile[]> {
@@ -77,8 +71,10 @@ export async function getAllMarkdownFilesRecursive(
   accumulatedFiles: MarkdownFile[] = []
 ): Promise<MarkdownFile[]> {
   const files = await getRepositoryContent(project)
+  console.log(`Scanning ${project.path || "root"}: found ${files.length} items`)
 
   for (const file of files) {
+    console.log(`  - ${file.name} (type: ${file.type})`)
     if (file.type === "file" && file.name.endsWith(".md")) {
       accumulatedFiles.push(file)
     } else if (file.type === "dir") {
@@ -92,7 +88,9 @@ export async function getAllMarkdownFilesRecursive(
     }
   }
 
-  return accumulatedFiles.sort((a, b) => a.path.localeCompare(b.path))
+  const sorted = accumulatedFiles.sort((a, b) => a.path.localeCompare(b.path))
+  console.log(`Total markdown files found: ${sorted.length}`)
+  return sorted
 }
 
 export async function downloadRepository(
@@ -110,6 +108,11 @@ export async function downloadRepository(
   })
 
   const markdownFiles = await getAllMarkdownFilesRecursive(project)
+  console.log(`Found ${markdownFiles.length} markdown files`)
+
+  if (markdownFiles.length === 0) {
+    throw new Error("No markdown files found in repository")
+  }
 
   await db.downloadProgress.put({
     repoId,
@@ -119,15 +122,33 @@ export async function downloadRepository(
   })
 
   const chapters: BookChapter[] = []
+  
   for (let i = 0; i < markdownFiles.length; i++) {
     const file = markdownFiles[i]
-    const content = await getFileContent(
-      project.owner,
-      project.repo,
-      file.path,
-      file.sha,
-      project.branch
-    )
+    
+    console.log(`Downloading chapter ${i}: ${file.name}, file size from API: ${file.size} bytes`)
+    
+    let content: string
+    try {
+      content = await getFileContent(
+        project.owner,
+        project.repo,
+        file.path,
+        file.sha,
+        project.branch
+      )
+    } catch (error) {
+      console.error(`Error fetching ${file.path}:`, error)
+      content = `# Error loading file\n\nFailed to load: ${file.path}\n\nError: ${error instanceof Error ? error.message : "Unknown error"}`
+    }
+    
+    console.log(`  Content length after fetch: ${content.length}`)
+    
+    if (content.length === 0 && file.size > 1000000) {
+      console.warn(`  WARNING: Large file (${file.size} bytes) returned empty content.`)
+      content = `# File Too Large\n\nThe file "${file.name}" is ${file.size} bytes.\n\nGitHub's raw content API should support files up to 100MB.\n\nPlease read the original at: https://github.com/${project.owner}/${project.repo}/blob/${project.branch || "main"}/${file.path}`
+    }
+    
     const chapter: BookChapter = {
       id: file.sha,
       title: extractTitle(content) || file.name.replace(".md", ""),
@@ -136,16 +157,26 @@ export async function downloadRepository(
       order: i,
     }
 
-    await db.cachedChapters.put({
-      id: chapter.id,
-      repoId,
-      title: chapter.title,
-      content: chapter.content,
-      path: chapter.path,
-      order: chapter.order,
-    })
-
     chapters.push(chapter)
+    
+    if (content.length > 0) {
+      try {
+        await db.cachedChapters.put({
+          id: chapter.id,
+          repoId,
+          title: chapter.title,
+          content: chapter.content,
+          contentSize: chapter.content.length,
+          path: chapter.path,
+          order: chapter.order,
+        })
+        console.log(`Saved chapter ${i} to DB, content size: ${chapter.content.length} chars`)
+      } catch (error) {
+        console.error(`Failed to save chapter ${i} to DB:`, error)
+        throw new Error(`Failed to save chapter "${chapter.title}" (${chapter.content.length} chars). IndexedDB may have size limits.`)
+      }
+    }
+    
     await db.downloadProgress.put({
       repoId,
       current: i + 1,
@@ -154,6 +185,13 @@ export async function downloadRepository(
     })
 
     onProgress?.(i + 1, markdownFiles.length)
+  }
+
+  const validChapters = chapters.filter(ch => ch.content.length > 0)
+  console.log(`Download complete: ${chapters.length} chapters found, ${validChapters.length} with content`)
+
+  if (validChapters.length === 0) {
+    throw new Error("No chapters could be downloaded. Files may be too large for GitHub API.")
   }
 
   const cachedRepo = {
@@ -177,8 +215,8 @@ export async function downloadRepository(
   return {
     title: repoInfo.name,
     description: repoInfo.description,
-    chapters,
-    totalChapters: chapters.length,
+    chapters: validChapters,
+    totalChapters: validChapters.length,
   }
 }
 

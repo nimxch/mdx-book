@@ -47,6 +47,10 @@ export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps)
     onDownloadStart()
 
     try {
+      const repoId = `${project.owner}/${project.repo}`
+      await deleteCachedRepo(repoId)
+      console.log("Cleared existing cache for:", repoId)
+      
       const book = await downloadRepository(project, (current, total) => {
         setDownloadProgress({ current, total, status: "downloading" })
       })
@@ -61,19 +65,45 @@ export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps)
   }
 
   const handleOpenBook = async (repoId: string) => {
-    const book = await db.cachedRepos.where("id").equals(repoId).first().then(async (repo) => {
-      if (!repo) return null
-      const chapters = await db.cachedChapters.where("repoId").equals(repoId).sortBy("order")
-      return {
-        title: repo.name,
-        description: repo.description,
-        chapters,
-        totalChapters: chapters.length,
-      } as Book
-    })
-    if (book) {
-      onBookSelect(book)
+    const repo = await db.cachedRepos.get(repoId)
+    if (!repo) {
+      console.error("Repo not found in cache:", repoId)
+      return
     }
+
+    const chapters = await db.cachedChapters
+      .where("repoId")
+      .equals(repoId)
+      .sortBy("order")
+
+    console.log(`Loaded ${chapters.length} chapters from cache for ${repoId}`)
+    
+    if (chapters.length === 0) {
+      console.warn("No chapters found in cache, repo might be corrupted. Try re-downloading.")
+      setError("Book appears corrupted. Please delete and re-download.")
+      return
+    }
+
+    const bookChapters = chapters.map((ch) => {
+      console.log(`  Chapter ${ch.order}: ${ch.title}, content length: ${ch.content?.length || 0}`)
+      return {
+        id: ch.id,
+        title: ch.title,
+        content: ch.content || "",
+        path: ch.path,
+        order: ch.order,
+      }
+    })
+
+    const book: Book = {
+      title: repo.name,
+      description: repo.description || "",
+      chapters: bookChapters,
+      totalChapters: bookChapters.length,
+    }
+
+    console.log("Book constructed:", book.title, book.totalChapters, "chapters")
+    onBookSelect(book)
   }
 
   const handleDelete = async (repoId: string) => {

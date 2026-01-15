@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useMemo } from "react"
+import { useEffect, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -12,14 +12,19 @@ interface BookViewerProps {
   onClose: () => void
 }
 
-function BookViewerContent({
+export function BookViewer({
   book,
   currentChapter,
   onChapterChange,
   onClose,
 }: BookViewerProps) {
   const contentRef = useRef<HTMLDivElement>(null)
-  const chapter = book.chapters[currentChapter]
+  
+  console.log("BookViewer render:", { currentChapter, totalChapters: book.totalChapters, chaptersCount: book.chapters.length })
+  
+  const chapter = book.chapters[currentChapter] || book.chapters[0]
+
+  console.log("Current chapter:", chapter?.title, "content length:", chapter?.content?.length)
 
   useEffect(() => {
     if (contentRef.current) {
@@ -29,13 +34,19 @@ function BookViewerContent({
 
   const handleLinkClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     const href = event.currentTarget.href
-    if (href && href.startsWith("http")) {
+    if (href && (href.startsWith("http") || href.startsWith("https"))) {
       event.preventDefault()
       window.open(href, "_blank", "noopener,noreferrer")
     }
   }
 
-  const markdownKey = useMemo(() => `${currentChapter}-${chapter.path}`, [currentChapter, chapter.path])
+  const handlePrevious = () => {
+    onChapterChange(Math.max(0, currentChapter - 1))
+  }
+
+  const handleNext = () => {
+    onChapterChange(Math.min(book.totalChapters - 1, currentChapter + 1))
+  }
 
   return (
     <div className="flex h-[calc(100vh-2rem)] gap-4">
@@ -47,7 +58,7 @@ function BookViewerContent({
             </Button>
             <div>
               <h2 className="font-semibold truncate max-w-[200px] sm:max-w-[400px]">
-                {chapter.title}
+                {chapter?.title || "Untitled"}
               </h2>
               <p className="text-sm text-muted-foreground">
                 Chapter {currentChapter + 1} of {book.totalChapters}
@@ -58,7 +69,7 @@ function BookViewerContent({
             <Button
               variant="outline"
               size="icon"
-              onClick={() => onChapterChange(Math.max(0, currentChapter - 1))}
+              onClick={handlePrevious}
               disabled={currentChapter === 0}
             >
               <ChevronLeft className="w-4 h-4" />
@@ -69,9 +80,7 @@ function BookViewerContent({
             <Button
               variant="outline"
               size="icon"
-              onClick={() =>
-                onChapterChange(Math.min(book.totalChapters - 1, currentChapter + 1))
-              }
+              onClick={handleNext}
               disabled={currentChapter === book.totalChapters - 1}
             >
               <ChevronRight className="w-4 h-4" />
@@ -83,7 +92,7 @@ function BookViewerContent({
           ref={contentRef}
           className="flex-1 overflow-y-auto p-8 prose prose-slate dark:prose-invert max-w-none"
         >
-          <article className="max-w-2xl mx-auto" key={markdownKey}>
+          <article className="max-w-2xl mx-auto" data-chapter={currentChapter}>
             <ReactMarkdown
               components={{
                 a: (props) => {
@@ -105,7 +114,7 @@ function BookViewerContent({
                 },
               }}
             >
-              {chapter.content}
+              {chapter?.content || ""}
             </ReactMarkdown>
           </article>
         </CardContent>
@@ -113,7 +122,7 @@ function BookViewerContent({
         <div className="flex items-center justify-between p-4 border-t bg-muted/30">
           <Button
             variant="outline"
-            onClick={() => onChapterChange(Math.max(0, currentChapter - 1))}
+            onClick={handlePrevious}
             disabled={currentChapter === 0}
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
@@ -124,9 +133,7 @@ function BookViewerContent({
           </span>
           <Button
             variant="outline"
-            onClick={() =>
-              onChapterChange(Math.min(book.totalChapters - 1, currentChapter + 1))
-            }
+            onClick={handleNext}
             disabled={currentChapter === book.totalChapters - 1}
           >
             Next
@@ -137,5 +144,3 @@ function BookViewerContent({
     </div>
   )
 }
-
-export const BookViewer = memo(BookViewerContent)
