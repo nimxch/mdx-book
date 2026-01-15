@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Github, Check, LogOut } from "lucide-react"
-import { getStoredUser, initiateOAuth, loginWithToken, logout } from "@/services/auth"
+import { getStoredUser, loginWithToken, logout } from "@/services/auth"
 import type { User } from "@/lib/db"
 
 interface AuthProps {
@@ -129,94 +129,91 @@ export function Auth({ onAuthChange }: AuthProps) {
               <div className="space-y-6">
                 {/* Header */}
                 <div>
-                  <h3 className="text-2xl font-serif italic font-light mb-2 text-gray-900">Get Started</h3>
-                  <p className="text-sm text-gray-600">Choose your login method</p>
+                  <h3 className="text-2xl font-serif italic font-light mb-2 text-gray-900">Connect GitHub</h3>
+                  <p className="text-sm text-gray-600">Securely connect your account to access your repositories.</p>
                 </div>
 
-                {/* GitHub OAuth Button */}
-                <button
-                  onClick={initiateOAuth}
-                  disabled={isLoading}
-                  className="w-full group disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <div className="relative p-3 rounded border border-gray-300 bg-green-600 hover:bg-green-700 transition-colors">
-                    <div className="flex items-center justify-center gap-2 text-white font-medium text-sm">
-                      <Github className="w-4 h-4" />
-                      <span>Sign in with GitHub</span>
-                    </div>
-                  </div>
-                </button>
-
-                {/* Divider */}
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300"></div>
-                  </div>
-                  <div className="relative flex justify-center text-xs">
-                    <span className="px-3 bg-white text-gray-600">Or use a personal token</span>
-                  </div>
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800">
+                  <p className="mb-2 font-medium">How it works (Local & Private)</p>
+                  <ol className="list-decimal list-inside space-y-1 text-blue-700/90">
+                    <li>Create a secure token on GitHub</li>
+                    <li>Paste it below to sign in</li>
+                  </ol>
+                  <p className="mt-2 text-xs opacity-75">Your token is stored <strong>only on this device</strong>.</p>
                 </div>
 
-                {/* Token Form */}
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault()
-                    if (!token.trim()) {
-                      setError("Please enter a token")
-                      return
-                    }
-                    setIsLoading(true)
-                    setError(null)
-                    try {
-                      const user = await loginWithToken(token.trim())
-                      setUser(user)
-                      onAuthChange(user)
-                    } catch (err) {
-                      setError(err instanceof Error ? err.message : "Failed to login")
-                    } finally {
-                      setIsLoading(false)
-                    }
-                  }}
-                  className="space-y-4"
-                >
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-gray-900">Personal Access Token</label>
-                    <Input
-                      type="password"
-                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                      value={token}
-                      onChange={(e) => setToken(e.target.value)}
-                      disabled={isLoading}
-                      className="text-sm border-gray-300 bg-white text-gray-900 placeholder-gray-500"
-                    />
-                    <p className="text-xs text-gray-600">
-                      <a
-                        href="https://github.com/settings/tokens/new"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:text-green-600 transition-colors underline"
-                      >
-                        Create token
-                      </a>
-                      {' '}with repo read access
-                    </p>
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full text-sm border-gray-300 text-gray-700 hover:bg-gray-100"
-                    disabled={!token || isLoading}
-                    variant="outline"
+                {/* Token Generation */}
+                <div>
+                  <button
+                    onClick={() => {
+                        import("@/services/auth").then(m => m.openGitHubTokenPage())
+                    }}
+                    className="w-full group mb-4"
                   >
-                    {isLoading ? "Signing in..." : "Continue with Token"}
-                  </Button>
-                </form>
+                    <div className="relative p-3 rounded border border-gray-300 bg-gray-50 hover:bg-white hover:border-gray-400 transition-all text-center">
+                      <div className="flex items-center justify-center gap-2 text-gray-700 font-medium text-sm">
+                        <Github className="w-4 h-4" />
+                        <span>Step 1: Generate Token on GitHub</span>
+                      </div>
+                    </div>
+                  </button>
 
-                <div className="relative">
+                  <div className="relative flex justify-center text-xs mb-4">
+                     <span className="bg-white px-2 text-gray-400">Step 2: Paste & Connect</span>
+                  </div>
+
+                  {/* Token Form */}
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault()
+                      if (!token.trim()) {
+                        setError("Please enter a token")
+                        return
+                      }
+                      setIsLoading(true)
+                      setError(null)
+                      try {
+                        const user = await loginWithToken(token.trim())
+                        setUser(user)
+                        onAuthChange(user)
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : "Failed to login")
+                      } finally {
+                        setIsLoading(false)
+                      }
+                    }}
+                    className="space-y-3"
+                  >
+                    <div className="space-y-2">
+                       <Input
+                         type="password"
+                         placeholder="Paste your token here (ghp_...)"
+                         value={token}
+                         onChange={(e) => setToken(e.target.value)}
+                         disabled={isLoading}
+                         className="text-sm border-gray-300 bg-white text-gray-900 placeholder-gray-500 font-mono"
+                       />
+                       <p className="text-xs text-gray-500 mt-2 italic">
+                         Note: This will be used in case you are downloading a private repository.
+                       </p>
+                    </div>
+                    
+                    <Button
+                      type="submit"
+                      className="w-full bg-green-600 hover:bg-green-700 text-white border-transparent"
+                      disabled={!token || isLoading}
+                    >
+                      {isLoading ? "Connecting..." : "Connect GitHub Account"}
+                    </Button>
+                  </form>
+                </div>
+
+                <div className="relative py-2">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300"></div>
+                    <div className="w-full border-t border-gray-200"></div>
                   </div>
                   <div className="relative flex justify-center text-xs">
-                    <span className="px-3 bg-white text-gray-600">No account?</span>
+                    <span className="px-3 bg-white text-gray-500">or</span>
                   </div>
                 </div>
 
@@ -248,20 +245,6 @@ export function Auth({ onAuthChange }: AuthProps) {
                     <p className="text-xs text-red-700">{error}</p>
                   </div>
                 )}
-
-                {/* Help Text */}
-                <div className="pt-4 border-t border-gray-200">
-                  <details className="group cursor-pointer">
-                    <summary className="flex items-center justify-between text-xs font-medium hover:text-gray-900 transition-colors select-none text-gray-700">
-                      <span>How it works</span>
-                      <span className="group-open:rotate-180 transition-transform text-gray-600">›</span>
-                    </summary>
-                    <div className="mt-3 space-y-2 text-xs text-gray-600 leading-relaxed">
-                      <p>Your GitHub token is stored locally in your browser only. It's never sent to any server and only used to fetch repository content.</p>
-                      <p>Revoke access anytime from your GitHub settings.</p>
-                    </div>
-                  </details>
-                </div>
               </div>
             </CardContent>
           </Card>

@@ -1,7 +1,6 @@
 import { db, type User } from "@/lib/db"
 
-const GITHUB_CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID || ""
-const GITHUB_REDIRECT_URI = import.meta.env.VITE_GITHUB_REDIRECT_URI || window.location.origin + "/callback"
+
 
 export interface GitHubUser {
   id: number
@@ -43,6 +42,7 @@ export async function logout(): Promise<void> {
   localStorage.removeItem("book-reader-font-family")
 }
 
+// Token management
 export function getAccessToken(): string | null {
   return localStorage.getItem("github_token")
 }
@@ -60,6 +60,9 @@ export async function fetchGitHubUser(token: string): Promise<GitHubUser> {
   })
 
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("Invalid or expired token")
+    }
     throw new Error(`Failed to fetch user: ${response.statusText}`)
   }
 
@@ -99,37 +102,11 @@ export async function loginAsGuest(): Promise<User> {
   return user
 }
 
-export function initiateOAuth(): void {
-  const scope = "repo read:user"
-  const url = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(GITHUB_REDIRECT_URI)}&scope=${encodeURIComponent(scope)}&allow_signup=true`
-  window.location.href = url
-}
-
-export async function handleOAuthCallback(code: string): Promise<User> {
-  const response = await fetch("https://github.com/login/oauth/access_token", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      client_id: GITHUB_CLIENT_ID,
-      code,
-      redirect_uri: GITHUB_REDIRECT_URI,
-    }),
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to exchange code for token")
-  }
-
-  const data = await response.json()
-
-  if (data.error) {
-    throw new Error(data.error_description || data.error)
-  }
-
-  return loginWithToken(data.access_token)
+export function openGitHubTokenPage(): void {
+  const description = "MDX Book Reader Access"
+  const scopes = "repo,read:user"
+  const url = `https://github.com/settings/tokens/new?description=${encodeURIComponent(description)}&scopes=${encodeURIComponent(scopes)}`
+  window.open(url, '_blank')
 }
 
 export function isAuthenticated(): boolean {

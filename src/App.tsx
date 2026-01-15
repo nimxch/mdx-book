@@ -72,24 +72,7 @@ function AppContent() {
     }
   }, [currentChapter, book])
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const code = params.get("code")
-    if (code) {
-      handleOAuthCallback(code)
-    }
-  }, [])
 
-  const handleOAuthCallback = async (code: string) => {
-    try {
-      const { handleOAuthCallback: exchangeCode } = await import("@/services/auth")
-      const user = await exchangeCode(code)
-      setUser(user)
-      window.history.replaceState({}, "", window.location.pathname)
-    } catch (error) {
-      console.error("OAuth error:", error)
-    }
-  }
 
   const handleAuthChange = (newUser: User | null) => {
     setUser(newUser)
