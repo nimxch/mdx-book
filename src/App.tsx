@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react"
 import { Auth } from "@/components/auth/Auth"
 import { BookViewer } from "@/components/book/BookViewer"
-import { TableOfContents } from "@/components/book/TableOfContents"
-import { Button } from "@/components/ui/button"
+import { Settings } from "@/components/settings/Settings"
 import { Card, CardContent } from "@/components/ui/card"
-import { Menu, Settings, Loader2 } from "lucide-react"
+import { BookOpen, Loader2 } from "lucide-react"
 import type { Book } from "@/types"
 import type { User } from "@/lib/db"
 import { CachedRepos } from "@/components/book/CachedRepos"
+import { SettingsProvider } from "@/context/SettingsContext"
 
-function App() {
+function AppContent() {
   const [user, setUser] = useState<User | null>(null)
   const [book, setBook] = useState<Book | null>(null)
   const [currentChapter, setCurrentChapter] = useState(0)
@@ -40,7 +40,6 @@ function App() {
   }
 
   const handleBookSelect = (selectedBook: Book) => {
-    console.log("Book selected:", selectedBook.title, "chapters:", selectedBook.chapters.length)
     setBook(selectedBook)
     setCurrentChapter(0)
   }
@@ -48,6 +47,7 @@ function App() {
   const handleCloseBook = () => {
     setBook(null)
     setCurrentChapter(0)
+    setShowTOC(false)
   }
 
   const handleDownloadStart = () => {
@@ -56,79 +56,62 @@ function App() {
 
   if (book) {
     return (
-      <div className="container mx-auto p-4 h-screen flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setShowTOC(!showTOC)}
-            >
-              <Menu className="w-4 h-4" />
-            </Button>
-            <div>
-              <h1 className="text-xl font-bold">{book.title}</h1>
-              {book.description && (
-                <p className="text-sm text-muted-foreground truncate max-w-[300px]">
-                  {book.description}
-                </p>
-              )}
-            </div>
-          </div>
-          <Button variant="outline" size="icon" onClick={handleCloseBook}>
-            <Settings className="w-4 h-4" />
-          </Button>
-        </div>
-
-        <div className="flex-1 flex gap-4 min-h-0">
-          {showTOC && (
-            <div className="w-64 hidden md:block">
-              <TableOfContents
-                book={book}
-                currentChapter={currentChapter}
-                onChapterSelect={setCurrentChapter}
-                onClose={() => setShowTOC(false)}
-              />
-            </div>
-          )}
-          <div className="flex-1">
-            <BookViewer
-              book={book}
-              currentChapter={currentChapter}
-              onChapterChange={(chapter) => {
-                console.log("Chapter changed to:", chapter)
-                setCurrentChapter(chapter)
-              }}
-              onClose={handleCloseBook}
-            />
-          </div>
-        </div>
-      </div>
+      <BookViewer
+        book={book}
+        currentChapter={currentChapter}
+        onChapterChange={setCurrentChapter}
+        onClose={handleCloseBook}
+        onToggleTOC={() => setShowTOC(!showTOC)}
+        showTOC={showTOC}
+      />
     )
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-12 px-4">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold mb-2">GitHub Book Reader</h1>
-          <p className="text-muted-foreground">
-            Download GitHub repositories for offline reading
-          </p>
+      <Settings />
+      
+      <header className="border-b bg-card">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <BookOpen className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold">GitHub Book Reader</h1>
+                <p className="text-sm text-muted-foreground">
+                  Beautiful offline reading for GitHub repositories
+                </p>
+              </div>
+            </div>
+            {user && (
+              <div className="flex items-center gap-3">
+                <img
+                  src={user.avatar_url}
+                  alt={user.name}
+                  className="w-8 h-8 rounded-full"
+                />
+                <span className="font-medium">{user.name}</span>
+              </div>
+            )}
+          </div>
         </div>
+      </header>
 
-        <div className="max-w-2xl mx-auto space-y-8">
-          {isDownloading && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-center gap-3">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Downloading repository...</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+      <main className="container mx-auto px-4 py-8">
+        {isDownloading && (
+          <Card className="max-w-2xl mx-auto mb-6">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-center gap-3">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Downloading repository...</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
+        <div className="max-w-4xl mx-auto">
           {user ? (
             <CachedRepos
               onBookSelect={handleBookSelect}
@@ -138,8 +121,22 @@ function App() {
             <Auth onAuthChange={handleAuthChange} />
           )}
         </div>
-      </div>
+      </main>
+
+      <footer className="border-t mt-12">
+        <div className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
+          <p>GitHub Book Reader - Transform repositories into beautiful reading experiences</p>
+        </div>
+      </footer>
     </div>
+  )
+}
+
+function App() {
+  return (
+    <SettingsProvider>
+      <AppContent />
+    </SettingsProvider>
   )
 }
 

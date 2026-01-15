@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { BookOpen, Download, Trash2, Loader2, GitBranch, FolderOpen } from "lucide-react"
+import { BookOpen, Download, Trash2, Loader2, GitBranch, FolderOpen, ExternalLink } from "lucide-react"
 import { parseGitHubUrl, downloadRepository, deleteCachedRepo, getDownloadProgress } from "@/services/github"
 import type { Book } from "@/types"
 
@@ -84,16 +84,13 @@ export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps)
       return
     }
 
-    const bookChapters = chapters.map((ch) => {
-      console.log(`  Chapter ${ch.order}: ${ch.title}, content length: ${ch.content?.length || 0}`)
-      return {
-        id: ch.id,
-        title: ch.title,
-        content: ch.content || "",
-        path: ch.path,
-        order: ch.order,
-      }
-    })
+    const bookChapters = chapters.map((ch) => ({
+      id: ch.id,
+      title: ch.title,
+      content: ch.content || "",
+      path: ch.path,
+      order: ch.order,
+    }))
 
     const book: Book = {
       title: repo.name,
@@ -106,29 +103,47 @@ export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps)
     onBookSelect(book)
   }
 
-  const handleDelete = async (repoId: string) => {
-    await deleteCachedRepo(repoId)
+  const handleDelete = async (repoId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (confirm("Delete this book from your library?")) {
+      await deleteCachedRepo(repoId)
+    }
+  }
+
+  const openInGitHub = (owner: string, repo: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    window.open(`https://github.com/${owner}/${repo}`, "_blank", "noopener,noreferrer")
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+    <div className="space-y-8">
+      <Card className="overflow-hidden border-0 shadow-lg">
+        <div className="h-1 bg-gradient-to-r from-primary to-primary/50" />
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-xl">
             <Download className="w-5 h-5" />
             Download Repository
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="repo-url">Repository URL</Label>
-            <Input
-              id="repo-url"
-              placeholder="https://github.com/owner/repo or owner/repo"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              disabled={isDownloading}
-            />
+            <Label htmlFor="repo-url" className="text-sm font-medium">
+              GitHub Repository
+            </Label>
+            <div className="relative">
+              <GitBranch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                id="repo-url"
+                placeholder="https://github.com/owner/repo or owner/repo"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                disabled={isDownloading}
+                className="pl-10"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Enter a GitHub repository URL to download and read offline
+            </p>
           </div>
 
           {downloadProgress && downloadProgress.total > 0 && (
@@ -154,9 +169,9 @@ export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps)
           )}
 
           {error && (
-            <p className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+            <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
               {error}
-            </p>
+            </div>
           )}
 
           <Button
@@ -179,62 +194,89 @@ export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps)
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      {cachedRepos && cachedRepos.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
             <FolderOpen className="w-5 h-5" />
-            My Library ({cachedRepos?.length || 0})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {cachedRepos && cachedRepos.length > 0 ? (
-            <div className="space-y-2">
-              {cachedRepos.map((repo) => (
-                <div
-                  key={repo.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{repo.name}</p>
-                    {repo.description && (
-                      <p className="text-sm text-muted-foreground truncate">
-                        {repo.description}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                      <GitBranch className="w-3 h-3" />
-                      {repo.owner}/{repo.repo}
+            My Library ({cachedRepos.length} {cachedRepos.length === 1 ? "book" : "books"})
+          </h2>
+          
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {cachedRepos.map((repo) => (
+              <Card
+                key={repo.id}
+                className="group cursor-pointer hover:shadow-lg transition-all duration-200 border-0 shadow-md"
+                onClick={() => handleOpenBook(repo.id)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
+                      <BookOpen className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => openInGitHub(repo.owner, repo.repo, e)}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={(e) => handleDelete(repo.id, e)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <h3 className="font-semibold mb-1 line-clamp-1">{repo.name}</h3>
+                  {repo.description && (
+                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                      {repo.description}
                     </p>
+                  )}
+                  
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <GitBranch className="w-3 h-3" />
+                    <span className="truncate">{repo.owner}/{repo.repo}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenBook(repo.id)}
-                    >
-                      <BookOpen className="w-4 h-4 mr-1" />
+                  
+                  <div className="mt-3 pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      {new Date(repo.downloadedAt).toLocaleDateString()}
+                    </span>
+                    <span className="flex items-center gap-1 text-primary font-medium">
                       Read
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(repo.id)}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                      <BookOpen className="w-3 h-3" />
+                    </span>
                   </div>
-                </div>
-              ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {cachedRepos && cachedRepos.length === 0 && (
+        <Card className="border-0 shadow-lg bg-muted/30">
+          <CardContent className="py-12 text-center">
+            <div className="mx-auto w-16 h-16 mb-4 rounded-full bg-muted flex items-center justify-center">
+              <FolderOpen className="w-8 h-8 text-muted-foreground" />
             </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No books downloaded yet</p>
-              <p className="text-sm">Download a repository to start reading</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            <h3 className="font-semibold mb-2">Your library is empty</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Download a GitHub repository to start reading
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Your downloaded books are stored locally and available offline
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
