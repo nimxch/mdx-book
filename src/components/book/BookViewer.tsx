@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { ChevronLeft, ChevronRight, Menu, X, BookOpen, Search, Bookmark, Type, MessageSquare, Book as BookIcon, Share2, Home, Maximize2, Minimize2, ChevronDown } from "lucide-react"
 import type { Book } from "@/types"
 import { useSettings } from "@/context/SettingsContext"
@@ -32,6 +33,11 @@ export function BookViewer({
   const [bookmarks, setBookmarks] = useState<BookBookmark[]>([])
   const [zenMode, setZenMode] = useState(false)
   const [showDownArrow, setShowDownArrow] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [searchResults, setSearchResults] = useState<number[]>([])
+  const [searchMode, setSearchMode] = useState<'page' | 'repo'>("page")
+  const [fontOption, setFontOption] = useState<'serif' | 'sans' | 'mono'>(fontFamily || 'serif')
+  const [activeSearchIndex, setActiveSearchIndex] = useState(0)
   const contentRef = useRef<HTMLDivElement>(null)
 
   const currentPage = book.pages[currentPageIndex]
@@ -303,11 +309,41 @@ export function BookViewer({
     }
   }, [currentPageIndex, book, zenMode])
 
+  // Search logic
+  useEffect(() => {
+    if (!searchTerm) {
+      setSearchResults([])
+      setActiveSearchIndex(0)
+      return
+    }
+    let results: number[] = []
+    if (searchMode === 'page') {
+      const content = currentPage.content.toLowerCase()
+      let idx = content.indexOf(searchTerm.toLowerCase())
+      while (idx !== -1) {
+        results.push(idx)
+        idx = content.indexOf(searchTerm.toLowerCase(), idx + 1)
+      }
+    } else {
+      // repo search: find all page indices containing the term
+      results = book.pages
+        .map((p, i) => p.content.toLowerCase().includes(searchTerm.toLowerCase()) ? i : -1)
+        .filter(i => i !== -1)
+    }
+    setSearchResults(results)
+    setActiveSearchIndex(0)
+  }, [searchTerm, searchMode, currentPage, book.pages])
+
+  // Font change logic
+  useEffect(() => {
+    // Optionally persist fontOption in localStorage or context
+  }, [fontOption])
+
   return (
-    <div className={`h-screen flex flex-col ${getThemeClasses()} transition-colors duration-300`}>
+    <div className={`h-screen flex flex-col font-${fontFamily} bg-background text-foreground transition-colors duration-300`} data-theme={theme} data-font-size={fontSize} data-font-family={fontFamily}>
       <ProgressBar book={book} currentChapter={currentChapter} />
 
-      <header className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-border/30 backdrop-blur-sm bg-background/95 sticky top-0 z-10">
+      <header className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-border/30 backdrop-blur-sm bg-background/95 sticky top-0 z-10 transition-colors duration-300">
         <div className="flex items-center gap-1">
           <Button 
             variant="ghost" 
@@ -353,7 +389,34 @@ export function BookViewer({
             <Type className="w-5 h-5" />
           </Button>
         </div>
-        
+        <div className="flex items-center gap-2">
+          <Input
+            type="text"
+            placeholder={searchMode === 'page' ? "Search in page..." : "Search in repo..."}
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-40 text-sm"
+          />
+          <Button
+            variant={searchMode === 'page' ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setSearchMode('page')}
+          >Page</Button>
+          <Button
+            variant={searchMode === 'repo' ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setSearchMode('repo')}
+          >Repo</Button>
+          <select
+            value={fontOption}
+            onChange={e => setFontOption(e.target.value as any)}
+            className="ml-2 border rounded px-2 py-1 text-sm"
+          >
+            <option value="serif">Serif</option>
+            <option value="sans">Sans</option>
+            <option value="mono">Mono</option>
+          </select>
+        </div>
         <h1 className="flex-1 text-center px-4 text-sm md:text-base font-medium text-foreground truncate">
           {book.title}
         </h1>
@@ -365,147 +428,164 @@ export function BookViewer({
           <div className="flex-1 overflow-hidden relative w-full">
             <div
               ref={contentRef}
-              className={`h-full ${getFontFamilyClass()} overflow-y-auto no-scrollbar px-8 md:px-12 lg:px-24 py-8 pb-24 md:pb-28${zenMode ? ' bg-white' : ''}`}
+              className={`h-full font-${fontOption} ${getFontFamilyClass()} overflow-y-auto no-scrollbar px-8 md:px-12 lg:px-24 py-8 pb-24 md:pb-28${zenMode ? ' bg-white' : ''}`}
               onMouseUp={handleTextSelection}
               onTouchEnd={handleTextSelection}
               style={{ textAlign: 'justify', textJustify: 'inter-word', scrollBehavior: 'smooth', position: 'relative' }}
             >
-              {currentPage && (
-                <div className={`${getFontSizeClass()} prose-custom`}>
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      a: renderLink,
-                      h1: ({ children }) => (
-                        <h1 className="text-3xl font-bold mb-6">{children}</h1>
-                      ),
-                      h2: ({ children }) => (
-                        <h2 className="text-2xl font-semibold mt-10 mb-5">{children}</h2>
-                      ),
-                      h3: ({ children }) => (
-                        <h3 className="text-xl font-semibold mt-8 mb-4">{children}</h3>
-                      ),
-                      h4: ({ children }) => (
-                        <h4 className="text-lg font-semibold mt-6 mb-3">{children}</h4>
-                      ),
-                      p: ({ children, node }) => {
-                        const hasOnlyImage = node?.children?.length === 1 && 
-                          node.children[0]?.type === 'element' && 
-                          node.children[0]?.tagName === 'img'
-                        
-                        if (hasOnlyImage) {
-                          return <>{children}</>
-                        }
-                        
-                        return <p className="mb-5 leading-[1.8]">{children}</p>
-                      },
-                      ul: ({ children }) => (
-                        <ul className="list-disc list-inside mb-5 space-y-2">{children}</ul>
-                      ),
-                      ol: ({ children }) => (
-                        <ol className="list-decimal list-inside mb-5 space-y-2">{children}</ol>
-                      ),
-                      li: ({ children }) => (
-                        <li className="ml-4">{children}</li>
-                      ),
-                      blockquote: ({ children }) => (
-                        <blockquote className="border-l-4 border-primary pl-4 italic my-6 bg-muted/30 py-3 pr-3 rounded-r">
+              {/* Highlight search results in page */}
+              {searchTerm && searchMode === 'page' ? (
+                <div className="bg-yellow-100">
+                  {currentPage.content.split(new RegExp(`(${searchTerm})`, 'gi')).map((part, i) =>
+                    part.toLowerCase() === searchTerm.toLowerCase() ? (
+                      <mark key={i} className="bg-yellow-300 text-black">{part}</mark>
+                    ) : (
+                      <span key={i}>{part}</span>
+                    )
+                  )}
+                </div>
+              ) : (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    a: renderLink,
+                    h1: ({ children }) => (
+                      <h1 className="text-3xl font-bold mb-6">{children}</h1>
+                    ),
+                    h2: ({ children }) => (
+                      <h2 className="text-2xl font-semibold mt-10 mb-5">{children}</h2>
+                    ),
+                    h3: ({ children }) => (
+                      <h3 className="text-xl font-semibold mt-8 mb-4">{children}</h3>
+                    ),
+                    h4: ({ children }) => (
+                      <h4 className="text-lg font-semibold mt-6 mb-3">{children}</h4>
+                    ),
+                    p: ({ children, node }) => {
+                      const hasOnlyImage = node?.children?.length === 1 && 
+                        node.children[0]?.type === 'element' && 
+                        node.children[0]?.tagName === 'img'
+                      
+                      if (hasOnlyImage) {
+                        return <>{children}</>
+                      }
+                      
+                      return <p className="mb-5 leading-[1.8]">{children}</p>
+                    },
+                    ul: ({ children }) => (
+                      <ul className="list-disc list-inside mb-5 space-y-2">{children}</ul>
+                    ),
+                    ol: ({ children }) => (
+                      <ol className="list-decimal list-inside mb-5 space-y-2">{children}</ol>
+                    ),
+                    li: ({ children }) => (
+                      <li className="ml-4">{children}</li>
+                    ),
+                    blockquote: ({ children }) => (
+                      <blockquote className="border-l-4 border-primary pl-4 italic my-6 bg-muted/30 py-3 pr-3 rounded-r">
+                        {children}
+                      </blockquote>
+                    ),
+                    table: ({ children }) => (
+                      <div className="overflow-x-auto my-6">
+                        <table className="min-w-full border-collapse border border-border">
                           {children}
-                        </blockquote>
-                      ),
-                      table: ({ children }) => (
-                        <div className="overflow-x-auto my-6">
-                          <table className="min-w-full border-collapse border border-border">
-                            {children}
-                          </table>
-                        </div>
-                      ),
-                      thead: ({ children }) => (
-                        <thead className="bg-muted">
-                          {children}
-                        </thead>
-                      ),
-                      tbody: ({ children }) => (
-                        <tbody className="divide-y divide-border">
-                          {children}
-                        </tbody>
-                      ),
-                      tr: ({ children }) => (
-                        <tr className="border-b border-border">
-                          {children}
-                        </tr>
-                      ),
-                      th: ({ children }) => (
-                        <th className="px-4 py-2 text-left font-semibold text-foreground border border-border">
-                          {children}
-                        </th>
-                      ),
-                      td: ({ children }) => (
-                        <td className="px-4 py-2 border border-border text-foreground">
-                          {children}
-                        </td>
-                      ),
-                      code: (props) => {
-                        const { inline, className, children } = props as { inline?: boolean; className?: string; children?: React.ReactNode }
-                        if (inline) {
-                          return (
-                            <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">
-                              {children}
-                            </code>
-                          )
-                        }
+                        </table>
+                      </div>
+                    ),
+                    thead: ({ children }) => (
+                      <thead className="bg-muted">
+                        {children}
+                      </thead>
+                    ),
+                    tbody: ({ children }) => (
+                      <tbody className="divide-y divide-border">
+                        {children}
+                      </tbody>
+                    ),
+                    tr: ({ children }) => (
+                      <tr className="border-b border-border">
+                        {children}
+                      </tr>
+                    ),
+                    th: ({ children }) => (
+                      <th className="px-4 py-2 text-left font-semibold text-foreground border border-border">
+                        {children}
+                      </th>
+                    ),
+                    td: ({ children }) => (
+                      <td className="px-4 py-2 border border-border text-foreground">
+                        {children}
+                      </td>
+                    ),
+                    code: (props) => {
+                      const { inline, className, children } = props as { inline?: boolean; className?: string; children?: React.ReactNode }
+                      if (inline) {
                         return (
-                          <code className={`${className || ""} block p-4 rounded-lg overflow-x-auto my-4 bg-muted`}>
+                          <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">
                             {children}
                           </code>
                         )
-                      },
-                      pre: ({ children }) => (
-                        <pre className="overflow-x-auto my-4 rounded-lg bg-muted p-4">
+                      }
+                      return (
+                        <code className={`${className || ""} block p-4 rounded-lg overflow-x-auto my-4 bg-muted`}>
                           {children}
-                        </pre>
-                      ),
-                      img: ({ src, alt }) => {
-                        if (!src || src.trim() === "") {
-                          return null
-                        }
-                        
-                        const hasCaption = alt && alt.trim() !== ""
-                        if (hasCaption) {
-                          return (
-                            <figure className="my-8">
-                              <img
-                                src={src}
-                                alt={alt}
-                                className="rounded-lg max-w-full h-auto shadow-sm"
-                                loading="lazy"
-                              />
-                              <figcaption className="text-center text-sm text-muted-foreground mt-3">
-                                {alt}
-                              </figcaption>
-                            </figure>
-                          )
-                        }
+                        </code>
+                      )
+                    },
+                    pre: ({ children }) => (
+                      <pre className="overflow-x-auto my-4 rounded-lg bg-muted p-4">
+                        {children}
+                      </pre>
+                    ),
+                    img: ({ src, alt }) => {
+                      if (!src || src.trim() === "") {
+                        return null
+                      }
+                      
+                      const hasCaption = alt && alt.trim() !== ""
+                      if (hasCaption) {
                         return (
-                          <img
-                            src={src}
-                            alt={alt || ""}
-                            className="rounded-lg max-w-full h-auto shadow-sm my-6"
-                            loading="lazy"
-                          />
+                          <figure className="my-8">
+                            <img
+                              src={src}
+                              alt={alt}
+                              className="rounded-lg max-w-full h-auto shadow-sm"
+                              loading="lazy"
+                            />
+                            <figcaption className="text-center text-sm text-muted-foreground mt-3">
+                              {alt}
+                            </figcaption>
+                          </figure>
                         )
-                      },
-                      hr: () => <hr className="my-10 border-border/30" />,
-                      strong: ({ children }) => (
-                        <strong className="font-semibold text-foreground">{children}</strong>
-                      ),
-                      em: ({ children }) => (
-                        <em className="italic">{children}</em>
-                      ),
-                    }}
-                  >
-                    {currentPage.content}
-                  </ReactMarkdown>
+                      }
+                      return (
+                        <img
+                          src={src}
+                          alt={alt || ""}
+                          className="rounded-lg max-w-full h-auto shadow-sm my-6"
+                          loading="lazy"
+                        />
+                      )
+                    },
+                    hr: () => <hr className="my-10 border-border/30" />,
+                    strong: ({ children }) => (
+                      <strong className="font-semibold text-foreground">{children}</strong>
+                    ),
+                    em: ({ children }) => (
+                      <em className="italic">{children}</em>
+                    ),
+                  }}
+                >
+                  {currentPage.content}
+                </ReactMarkdown>
+              )}
+              {/* Repo search navigation */}
+              {searchTerm && searchMode === 'repo' && searchResults.length > 0 && (
+                <div className="fixed left-1/2 bottom-24 z-30 flex gap-2 items-center" style={{ transform: 'translateX(-50%)' }}>
+                  <Button size="sm" onClick={() => setCurrentPageIndex(searchResults[Math.max(activeSearchIndex - 1, 0)])} disabled={activeSearchIndex === 0}>Prev</Button>
+                  <span className="text-xs">{activeSearchIndex + 1} / {searchResults.length}</span>
+                  <Button size="sm" onClick={() => setCurrentPageIndex(searchResults[Math.min(activeSearchIndex + 1, searchResults.length - 1)])} disabled={activeSearchIndex === searchResults.length - 1}>Next</Button>
                 </div>
               )}
             </div>

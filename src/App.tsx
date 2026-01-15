@@ -15,6 +15,8 @@ function AppContent() {
   const [showTOC, setShowTOC] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [initialPageIndex, setInitialPageIndex] = useState(0)
+  // Settings modal state
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // Load persisted state on mount
   useEffect(() => {
@@ -117,19 +119,30 @@ function AppContent() {
         currentChapter={currentChapter}
         onChapterChange={setCurrentChapter}
         onClose={handleCloseBook}
-        onToggleTOC={() => setShowTOC(!showTOC)}
         showTOC={showTOC}
         initialPageIndex={initialPageIndex}
       />
     )
   }
 
+  // Get global theme/font from context
+  const { theme, fontSize, fontFamily } = (window as any).useSettings ? (window as any).useSettings() : {};
+  // Fallback for SSR or missing context
+  const themeClass = theme ? `data-theme="${theme}"` : ""
+  const fontSizeClass = fontSize ? `data-font-size="${fontSize}"` : ""
+  const fontFamilyClass = fontFamily ? `data-font-family="${fontFamily}"` : ""
   return (
-    <div className="min-h-screen bg-white">
-      <Settings />
+    <div
+      className={`min-h-screen font-${fontFamily} bg-background text-foreground transition-colors duration-300`}
+      data-theme={theme}
+      data-font-size={fontSize}
+      data-font-family={fontFamily}
+    >
+      {/* Settings Modal Triggered by Profile Icon */}
+      <Settings isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b bg-background/95 border-border backdrop-blur transition-colors duration-300">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -142,11 +155,18 @@ function AppContent() {
             </div>
             {user && (
               <div className="flex items-center gap-4">
-                <img
-                  src={user.avatar_url}
-                  alt={user.name}
-                  className="w-8 h-8 rounded-full ring-1 ring-gray-300"
-                />
+                <button
+                  className="relative group"
+                  onClick={() => setSettingsOpen(true)}
+                  title="Profile & Settings"
+                >
+                  <img
+                    src={user.avatar_url}
+                    alt={user.name}
+                    className="w-8 h-8 rounded-full ring-1 ring-gray-300 cursor-pointer"
+                  />
+                  <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 text-xs bg-black text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">Settings</span>
+                </button>
                 <span className="text-sm hidden sm:inline text-gray-700">{user.name}</span>
               </div>
             )}
