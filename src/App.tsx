@@ -37,7 +37,7 @@ function AppContent() {
       try {
         setUser(JSON.parse(savedUser))
       } catch (e) {
-        console.error('Failed to parse saved user', e)
+        // Failed to parse saved user
       }
     }
     
@@ -45,7 +45,7 @@ function AppContent() {
       try {
         setBook(JSON.parse(savedBook))
       } catch (e) {
-        console.error('Failed to parse saved book', e)
+        // Failed to parse saved book
       }
     }
     

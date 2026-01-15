@@ -88,10 +88,8 @@ export async function getAllMarkdownFilesRecursive(
   accumulatedFiles: MarkdownFile[] = []
 ): Promise<MarkdownFile[]> {
   const files = await getRepositoryContent(project)
-  console.log(`Scanning ${project.path || "root"}: found ${files.length} items`)
 
   for (const file of files) {
-    console.log(`  - ${file.name} (type: ${file.type})`)
     if (file.type === "file" && file.name.endsWith(".md")) {
       accumulatedFiles.push(file)
     } else if (file.type === "dir") {
@@ -106,7 +104,6 @@ export async function getAllMarkdownFilesRecursive(
   }
 
   const sorted = accumulatedFiles.sort((a, b) => a.path.localeCompare(b.path))
-  console.log(`Total markdown files found: ${sorted.length}`)
   return sorted
 }
 
@@ -125,7 +122,6 @@ export async function downloadRepository(
   })
 
   const markdownFiles = await getAllMarkdownFilesRecursive(project)
-  console.log(`Found ${markdownFiles.length} markdown files`)
 
   if (markdownFiles.length === 0) {
     throw new Error("No markdown files found in repository")
@@ -143,8 +139,6 @@ export async function downloadRepository(
   for (let i = 0; i < markdownFiles.length; i++) {
     const file = markdownFiles[i]
     
-    console.log(`Downloading chapter ${i}: ${file.name}, file size from API: ${file.size} bytes`)
-    
     let content: string
     try {
       content = await getFileContent(
@@ -155,14 +149,10 @@ export async function downloadRepository(
         project.branch
       )
     } catch (error) {
-      console.error(`Error fetching ${file.path}:`, error)
       content = `# Error loading file\n\nFailed to load: ${file.path}\n\nError: ${error instanceof Error ? error.message : "Unknown error"}`
     }
     
-    console.log(`  Content length after fetch: ${content.length}`)
-    
     if (content.length === 0 && file.size > 1000000) {
-      console.warn(`  WARNING: Large file (${file.size} bytes) returned empty content.`)
       content = `# File Too Large\n\nThe file "${file.name}" is ${file.size} bytes.\n\nGitHub's raw content API should support files up to 100MB.\n\nPlease read the original at: https://github.com/${project.owner}/${project.repo}/blob/${project.branch || "main"}/${file.path}`
     }
     
@@ -187,9 +177,7 @@ export async function downloadRepository(
           path: chapter.path,
           order: chapter.order,
         })
-        console.log(`Saved chapter ${i} to DB, content size: ${chapter.content.length} chars`)
       } catch (error) {
-        console.error(`Failed to save chapter ${i} to DB:`, error)
         throw new Error(`Failed to save chapter "${chapter.title}" (${chapter.content.length} chars). IndexedDB may have size limits.`)
       }
     }
@@ -205,7 +193,6 @@ export async function downloadRepository(
   }
 
   const validChapters = chapters.filter(ch => ch.content.length > 0)
-  console.log(`Download complete: ${chapters.length} chapters found, ${validChapters.length} with content`)
 
   if (validChapters.length === 0) {
     throw new Error("No chapters could be downloaded. Files may be too large for GitHub API.")
@@ -230,16 +217,6 @@ export async function downloadRepository(
   })
 
   const pages = divideIntoPages(validChapters)
-  console.log(`\n=== TOTAL PAGES: ${pages.length} ===`)
-  console.log(`\n=== FIRST 5 PAGES ===`)
-  for (let i = 0; i < Math.min(5, pages.length); i++) {
-    const page = pages[i]
-    console.log(`\n--- Page ${i + 1} ---`)
-    console.log(`Chapter: ${page.chapterIndex + 1} - ${page.title}`)
-    console.log(`Page within chapter: ${page.pageIndex + 1}`)
-    console.log(`Content length: ${page.contentLength} chars`)
-    console.log(`Preview: ${page.contentPreview}`)
-  }
 
   for (let i = 0; i < pages.length; i++) {
     const page = pages[i]
@@ -256,7 +233,6 @@ export async function downloadRepository(
         order: i,
       })
     } catch (error) {
-      console.error(`Failed to save page ${i} to DB:`, error)
     }
   }
 
@@ -408,17 +384,6 @@ export async function buildBook(project: GitHubProject): Promise<Book> {
   const repoInfo = await getRepositoryInfo(project)
 
   const pages = divideIntoPages(chapters)
-
-  console.log(`\n=== TOTAL PAGES: ${pages.length} ===`)
-  console.log(`\n=== FIRST 5 PAGES ===`)
-  for (let i = 0; i < Math.min(5, pages.length); i++) {
-    const page = pages[i]
-    console.log(`\n--- Page ${i + 1} ---`)
-    console.log(`Chapter: ${page.chapterIndex + 1} - ${page.title}`)
-    console.log(`Page within chapter: ${page.pageIndex + 1}`)
-    console.log(`Content length: ${page.contentLength} chars`)
-    console.log(`Preview: ${page.contentPreview}`)
-  }
 
   return {
     title: repoInfo.name,

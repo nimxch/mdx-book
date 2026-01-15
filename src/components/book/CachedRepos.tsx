@@ -50,7 +50,6 @@ export function CachedRepos({ onBookSelect, onDownloadStart, onDownloadEnd }: Ca
     try {
       const repoId = `${project.owner}/${project.repo}`
       await deleteCachedRepo(repoId)
-      console.log("Cleared existing cache for:", repoId)
       
       const book = await downloadRepository(project, (current, total) => {
         setDownloadProgress({ current, total, status: "downloading" })
@@ -58,7 +57,6 @@ export function CachedRepos({ onBookSelect, onDownloadStart, onDownloadEnd }: Ca
       onBookSelect(book)
       setUrl("")
     } catch (err) {
-      console.error("Download error:", err)
       const message = err instanceof Error ? err.message : "Failed to download"
       
       if (message.includes("rate limit exceeded") || message.includes("API rate limit")) {
@@ -80,7 +78,6 @@ export function CachedRepos({ onBookSelect, onDownloadStart, onDownloadEnd }: Ca
   const handleOpenBook = async (repoId: string) => {
     const repo = await db.cachedRepos.get(repoId)
     if (!repo) {
-      console.error("Repo not found in cache:", repoId)
       return
     }
 
@@ -88,11 +85,8 @@ export function CachedRepos({ onBookSelect, onDownloadStart, onDownloadEnd }: Ca
       .where("repoId")
       .equals(repoId)
       .sortBy("order")
-
-    console.log(`Loaded ${chapters.length} chapters from cache for ${repoId}`)
     
     if (chapters.length === 0) {
-      console.warn("No chapters found in cache, repo might be corrupted. Try re-downloading.")
       setError("Book appears corrupted. Please delete and re-download.")
       return
     }
@@ -192,8 +186,6 @@ export function CachedRepos({ onBookSelect, onDownloadStart, onDownloadEnd }: Ca
       }] : [],
     }
 
-    console.log("Book constructed:", book.title, book.totalChapters, "chapters", pages.length, "pages")
-    // Pass initialPageIndex to BookViewer via onBookSelect
     onBookSelect({ ...book, initialPageIndex })
   }
 
