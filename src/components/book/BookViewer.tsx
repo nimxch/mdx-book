@@ -171,27 +171,54 @@ export function BookViewer({
     <div className={`h-screen flex flex-col ${getThemeClasses()} transition-colors duration-300`}>
       <ProgressBar book={book} currentChapter={currentChapter} />
 
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border/30 backdrop-blur-sm bg-background/95 sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={onToggleTOC} className="hover:bg-muted/50">
+      <header className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-border/30 backdrop-blur-sm bg-background/95 sticky top-0 z-10">
+        <div className="flex items-center gap-1">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onToggleTOC} 
+            className="hover:bg-muted/50 lg:hidden"
+            title="Table of Contents"
+          >
             <Menu className="w-5 h-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="hover:bg-muted/50">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="hover:bg-muted/50 hidden md:inline-flex"
+            title="Search"
+          >
             <Search className="w-5 h-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="hover:bg-muted/50">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="hover:bg-muted/50 hidden md:inline-flex"
+            title="Bookmark"
+          >
             <Bookmark className="w-5 h-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="hover:bg-muted/50">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="hover:bg-muted/50 hidden md:inline-flex"
+            title="Font Settings"
+          >
             <Type className="w-5 h-5" />
           </Button>
         </div>
         
-        <h1 className="absolute left-1/2 -translate-x-1/2 text-base font-medium text-foreground/80">
+        <h1 className="flex-1 text-center px-4 text-sm md:text-base font-medium text-foreground truncate">
           {book.title}
         </h1>
 
-        <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-muted/50">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={onClose} 
+          className="hover:bg-muted/50"
+          title="Close"
+        >
           <X className="w-5 h-5" />
         </Button>
       </header>
@@ -200,7 +227,7 @@ export function BookViewer({
         <aside
           className={`fixed inset-y-0 left-0 w-80 bg-background border-r border-border/30 transform transition-transform duration-300 z-20 ${
             showTOC ? "translate-x-0" : "-translate-x-full"
-          } lg:relative lg:translate-x-0 ${showTOC ? "lg:w-80" : "lg:w-0"}`}
+          } lg:hidden`}
         >
           <div className="h-full overflow-y-auto p-6">
             <h3 className="font-semibold text-lg mb-6 flex items-center gap-2 text-foreground">

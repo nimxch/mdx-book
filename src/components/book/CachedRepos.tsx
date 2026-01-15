@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { BookOpen, Download, Trash2, Loader2, GitBranch, FolderOpen, ExternalLink } from "lucide-react"
 import { parseGitHubUrl, downloadRepository, deleteCachedRepo, getDownloadProgress } from "@/services/github"
-import type { Book } from "@/types"
+import type { Book, BookPage } from "@/types"
 
 interface CachedReposProps {
   onBookSelect: (book: Book) => void
@@ -92,16 +92,40 @@ export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps)
       order: ch.order,
     }))
 
+    // Generate pages from chapters (split long content into pages)
+    const pages: BookPage[] = []
+    bookChapters.forEach((chapter, chapterIndex) => {
+      const content = chapter.content || ""
+      // Split content into chunks (approximately 3000 chars per page)
+      const chunkSize = 3000
+      const chunks = []
+      for (let i = 0; i < content.length; i += chunkSize) {
+        chunks.push(content.substring(i, i + chunkSize))
+      }
+      
+      chunks.forEach((pageContent, pageIndex) => {
+        pages.push({
+          chapterIndex,
+          pageIndex,
+          title: chapter.title,
+          content: pageContent,
+          contentPreview: pageContent.substring(0, 100),
+          contentLength: pageContent.length,
+        })
+      })
+    })
+
     const book: Book = {
       title: repo.name,
       description: repo.description || "",
       owner: repo.owner,
       repo: repo.repo,
       chapters: bookChapters,
+      pages: pages,
       totalChapters: bookChapters.length,
     }
 
-    console.log("Book constructed:", book.title, book.totalChapters, "chapters")
+    console.log("Book constructed:", book.title, book.totalChapters, "chapters", pages.length, "pages")
     onBookSelect(book)
   }
 
