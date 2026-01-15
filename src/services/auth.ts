@@ -21,8 +21,26 @@ export async function saveUser(user: User): Promise<void> {
 }
 
 export async function logout(): Promise<void> {
-  await db.users.clear()
+  // Clear all IndexedDB tables to remove all cached data
+  await Promise.all([
+    db.users.clear(),
+    db.cachedRepos.clear(),
+    db.cachedChapters.clear(),
+    db.cachedPages.clear(),
+    db.downloadProgress.clear(),
+    db.bookmarks.clear(),
+  ])
+
+  // Clear all app specific local storage
   localStorage.removeItem("github_token")
+  localStorage.removeItem("book-reader-user")
+  localStorage.removeItem("book-reader-current-book")
+  localStorage.removeItem("book-reader-current-chapter")
+  
+  // Clear settings to enforce default (light mode) state on logout
+  localStorage.removeItem("book-reader-theme")
+  localStorage.removeItem("book-reader-font-size")
+  localStorage.removeItem("book-reader-font-family")
 }
 
 export function getAccessToken(): string | null {
@@ -62,6 +80,22 @@ export async function loginWithToken(token: string): Promise<User> {
   await saveUser(user)
   setAccessToken(token)
 
+  return user
+}
+
+export async function loginAsGuest(): Promise<User> {
+  const user: User = {
+    id: 0,
+    login: "guest",
+    name: "Guest User",
+    avatar_url: "https://ui-avatars.com/api/?name=Guest+User&background=random",
+    accessToken: "",
+  }
+
+  await saveUser(user)
+  // Ensure we don't have a token stored
+  localStorage.removeItem("github_token")
+  
   return user
 }
 

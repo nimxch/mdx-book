@@ -23,20 +23,65 @@ const fontFamilies: { id: FontFamily; label: string; css: string }[] = [
   { id: "mono", label: "Monospace", css: "font-mono" },
 ]
 
+import { logout } from "@/services/auth"
+import { LogOut, AlertTriangle } from "lucide-react"
+
 export function Settings({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   const { theme, setTheme, fontSize, setFontSize, fontFamily, setFontFamily } = useSettings()
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+
+  const handleLogout = async () => {
+    await logout()
+    window.location.reload()
+  }
+
   if (!isOpen) return null
+
+  // Confirmation Modal Overlay
+  if (showLogoutConfirm) {
+    return (
+      <>
+        <div className="fixed inset-0 bg-black/60 z-[60] backdrop-blur-sm" onClick={() => setShowLogoutConfirm(false)} />
+        <Card className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 lg:w-96 z-[70] shadow-2xl border-destructive/20 animate-in fade-in zoom-in duration-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Clear all data?
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This will log you out and <strong>permanently delete</strong> all downloaded books, bookmarks, and local data from this device.
+            </p>
+            <div className="flex gap-2 justify-end mt-4">
+              <Button variant="outline" onClick={() => setShowLogoutConfirm(false)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleLogout}
+                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              >
+                Yes, Clear Everything
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </>
+    )
+  }
+
   return (
     <>
       <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />
-      <Card className="fixed top-[72px] right-6 w-80 z-50 shadow-xl animate-in slide-in-from-bottom-2 duration-200">
-        <CardHeader className="pb-3">
+      <Card className="fixed top-[72px] right-6 w-80 z-50 shadow-xl animate-in slide-in-from-bottom-2 duration-200 border-border bg-popover text-popover-foreground">
+        <CardHeader className="pb-3 border-b border-border">
           <CardTitle className="text-lg flex items-center gap-2">
             <SettingsIcon className="w-5 h-5" />
             Profile & Settings
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 pt-6">
           <div className="space-y-3">
             <label className="text-sm font-medium flex items-center gap-2">
               <Sun className="w-4 h-4" />
@@ -104,6 +149,17 @@ export function Settings({ isOpen, onClose }: { isOpen: boolean, onClose: () => 
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="pt-4 border-t border-border mt-6">
+             <Button 
+              variant="ghost" 
+              className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+              onClick={() => setShowLogoutConfirm(true)}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out & Clear Data
+            </Button>
           </div>
         </CardContent>
       </Card>

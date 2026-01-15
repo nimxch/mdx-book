@@ -154,13 +154,7 @@ export function BookViewer({
     }
   }
 
-  const getThemeClasses = () => {
-    switch (theme) {
-      case "dark": return "bg-slate-900 text-slate-100"
-      case "sepia": return "bg-[#f4ecd8] text-slate-800"
-      default: return "bg-white text-slate-900"
-    }
-  }
+
 
   const renderLink = (props: { href?: string; children?: React.ReactNode }) => {
     const href = props.href || ""
@@ -340,7 +334,7 @@ export function BookViewer({
   }, [fontOption])
 
   return (
-    <div className={`h-screen flex flex-col font-${fontFamily} bg-background text-foreground transition-colors duration-300`} data-theme={theme} data-font-size={fontSize} data-font-family={fontFamily}>
+    <div className={`h-screen flex flex-col font-${fontFamily} bg-background text-foreground transition-colors duration-300${zenMode ? ' zen-mode-active' : ''}`} data-theme={theme} data-font-size={fontSize} data-font-family={fontFamily}>
       <ProgressBar book={book} currentChapter={currentChapter} />
 
       <header className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-border/30 backdrop-blur-sm bg-background/95 sticky top-0 z-10 transition-colors duration-300">
@@ -428,7 +422,7 @@ export function BookViewer({
           <div className="flex-1 overflow-hidden relative w-full">
             <div
               ref={contentRef}
-              className={`h-full font-${fontOption} ${getFontFamilyClass()} overflow-y-auto no-scrollbar px-8 md:px-12 lg:px-24 py-8 pb-24 md:pb-28${zenMode ? ' bg-white' : ''}`}
+              className={`h-full font-${fontOption} ${getFontFamilyClass()} overflow-y-auto no-scrollbar px-8 md:px-12 lg:px-24 py-8 pb-24 md:pb-28${zenMode ? ' bg-background' : ''}`}
               onMouseUp={handleTextSelection}
               onTouchEnd={handleTextSelection}
               style={{ textAlign: 'justify', textJustify: 'inter-word', scrollBehavior: 'smooth', position: 'relative' }}

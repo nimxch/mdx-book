@@ -211,6 +211,37 @@ export function Auth({ onAuthChange }: AuthProps) {
                   </Button>
                 </form>
 
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="px-3 bg-white text-gray-600">No account?</span>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={async () => {
+                    setIsLoading(true)
+                    try {
+                      // Import dynamically to avoid circular dependencies if any
+                      const { loginAsGuest } = await import("@/services/auth")
+                      const user = await loginAsGuest()
+                      setUser(user)
+                      onAuthChange(user)
+                    } catch (err) {
+                      setError("Failed to continue as guest")
+                    } finally {
+                      setIsLoading(false)
+                    }
+                  }}
+                  variant="ghost"
+                  className="w-full text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  disabled={isLoading}
+                >
+                  Continue as Guest
+                </Button>
+
                 {/* Error Message */}
                 {error && (
                   <div className="p-3 rounded bg-red-50 border border-red-200">

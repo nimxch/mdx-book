@@ -198,7 +198,7 @@ export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps)
 
   return (
     <div className="space-y-8">
-      <Card className="overflow-hidden border-0 shadow-lg">
+      <Card className="overflow-hidden border-0 shadow-lg max-w-2xl mx-auto">
         <div className="h-1 bg-linear-to-r from-primary to-primary/50" />
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 text-xl">

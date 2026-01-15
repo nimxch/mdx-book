@@ -49,9 +49,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const [fontFamily, setFontFamily] = useState<FontFamily>(() => {
     if (typeof window !== "undefined") {
-      return (localStorage.getItem(fontFamilyStorageKey) as FontFamily) || "serif"
+      return (localStorage.getItem(fontFamilyStorageKey) as FontFamily) || "sans"
     }
-    return "serif"
+    return "sans"
   })
 
   useEffect(() => {
