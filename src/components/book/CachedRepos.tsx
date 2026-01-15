@@ -12,9 +12,10 @@ import type { Book, BookPage } from "@/types"
 interface CachedReposProps {
   onBookSelect: (book: Book) => void
   onDownloadStart: () => void
+  onDownloadEnd: () => void
 }
 
-export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps) {
+export function CachedRepos({ onBookSelect, onDownloadStart, onDownloadEnd }: CachedReposProps) {
   const [url, setUrl] = useState("")
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number; status: string } | null>(null)
@@ -70,6 +71,7 @@ export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps)
     } finally {
       setIsDownloading(false)
       setDownloadProgress(null)
+      onDownloadEnd()
     }
   }
 

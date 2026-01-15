@@ -215,6 +215,7 @@ function AppContent() {
                 <CachedRepos
                   onBookSelect={handleBookSelect}
                   onDownloadStart={handleDownloadStart}
+                  onDownloadEnd={() => setIsDownloading(false)}
                 />
               </>
             ) : (
