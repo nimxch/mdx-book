@@ -321,14 +321,41 @@ function extractTitle(content: string): string | null {
 }
 
 export function parseGitHubUrl(url: string): GitHubProject | null {
+  if (!url) return null
+
+  // Clean the URL: strip protocol and common prefixes
+  let cleanUrl = url.trim()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/\/$/, "")
+
+  // Handle api.github.com URLs (e.g., api.github.com/repos/owner/repo/contents/path)
+  if (cleanUrl.includes("api.github.com/repos/")) {
+    const parts = cleanUrl.split("api.github.com/repos/")[1].split("/")
+    if (parts.length >= 2) {
+      return {
+        owner: parts[0],
+        repo: parts[1],
+        // Note: API URLs for contents might have path/branch in them, 
+        // but for simplicity we just return owner/repo and let the user specify details 
+        // if they provided a complex API URL.
+      }
+    }
+  }
+
   const patterns = [
+    // Standard GitHub URLs: github.com/owner/repo/tree/branch/path
     /github\.com\/([^/]+)\/([^/]+)(?:\/tree\/([^/]+))?(?:\/(.+))?/,
+    // Short format: owner/repo/path
     /^([^/]+)\/([^/]+)(?:\/(.+))?$/,
   ]
 
   for (const pattern of patterns) {
-    const match = url.match(pattern)
+    const match = cleanUrl.match(pattern)
     if (match) {
+      // Avoid matching "github.com" as owner if it's already handled or malformed
+      if (match[1] === "github.com") continue
+
       return {
         owner: match[1],
         repo: match[2].replace(/\.git$/, ""),
