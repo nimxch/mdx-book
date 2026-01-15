@@ -29,6 +29,8 @@ export interface BookChapter {
 export interface Book {
   title: string
   description?: string
+  owner: string
+  repo: string
   chapters: BookChapter[]
   totalChapters: number
 }

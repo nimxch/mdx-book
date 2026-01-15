@@ -95,6 +95,8 @@ export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps)
     const book: Book = {
       title: repo.name,
       description: repo.description || "",
+      owner: repo.owner,
+      repo: repo.repo,
       chapters: bookChapters,
       totalChapters: bookChapters.length,
     }
@@ -118,7 +120,7 @@ export function CachedRepos({ onBookSelect, onDownloadStart }: CachedReposProps)
   return (
     <div className="space-y-8">
       <Card className="overflow-hidden border-0 shadow-lg">
-        <div className="h-1 bg-gradient-to-r from-primary to-primary/50" />
+        <div className="h-1 bg-linear-to-r from-primary to-primary/50" />
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 text-xl">
             <Download className="w-5 h-5" />

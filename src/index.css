@@ -136,3 +136,50 @@ body {
     font-size: 16px;
   }
 }
+
+/* E-Reader Styles */
+.prose-custom {
+  font-size: 1rem;
+  line-height: 1.8;
+  width: 100%;
+  max-width: 65ch;
+  margin: 0 auto;
+}
+
+.prose-custom h1,
+.prose-custom h2,
+.prose-custom h3,
+.prose-custom h4 {
+  break-after: avoid;
+  break-inside: avoid;
+  text-align: left;
+}
+
+.prose-custom p {
+  break-inside: avoid;
+  text-align: justify;
+  text-justify: inter-word;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  -moz-hyphens: auto;
+  -ms-hyphens: auto;
+}
+
+.prose-custom blockquote {
+  break-inside: avoid;
+  text-align: justify;
+}
+
+.prose-custom figure {
+  break-inside: avoid;
+}
+
+.prose-custom ul,
+.prose-custom ol {
+  break-inside: avoid;
+  text-align: left;
+}
+
+.prose-custom li {
+  text-align: justify;
+}

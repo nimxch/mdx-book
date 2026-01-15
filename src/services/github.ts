@@ -215,6 +215,8 @@ export async function downloadRepository(
   return {
     title: repoInfo.name,
     description: repoInfo.description,
+    owner: project.owner,
+    repo: project.repo,
     chapters: validChapters,
     totalChapters: validChapters.length,
   }
@@ -232,6 +234,8 @@ export async function loadBookFromCache(repoId: string): Promise<Book | null> {
   return {
     title: repo.name,
     description: repo.description,
+    owner: repo.owner,
+    repo: repo.repo,
     chapters,
     totalChapters: chapters.length,
   }

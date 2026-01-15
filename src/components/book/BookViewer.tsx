@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import ReactMarkdown from "react-markdown"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, Menu, X, BookOpen, Loader2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Menu, X, BookOpen, Loader2, Search, Bookmark, Type, MessageSquare, Book as BookIcon, Share2 } from "lucide-react"
 import type { Book } from "@/types"
 import { useSettings } from "@/context/SettingsContext"
 import { ProgressBar } from "./ProgressBar"
@@ -29,6 +29,10 @@ export function BookViewer({
   const { theme, fontSize, fontFamily } = useSettings()
   const [content, setContent] = useState(chapter?.content || "")
   const [isLoading, setIsLoading] = useState(false)
+  const [showActionMenu, setShowActionMenu] = useState(false)
+  const [selectedText, setSelectedText] = useState("")
+  const [currentPage, setCurrentPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
 
   const fetchChapterContent = useCallback(async () => {
     if (!chapter) return
@@ -40,11 +44,16 @@ export function BookViewer({
       return
     }
 
+    // Skip fetching if owner/repo are not available
+    if (!book.owner || !book.repo) {
+      console.warn("Book owner or repo not available, using cached content")
+      setContent(chapter.content)
+      return
+    }
+
     setIsLoading(true)
     try {
-      const repo = book.title
-      const owner = book.description?.split(" - ")[0] || ""
-      const content = await getFileContent(owner, repo, chapter.path, chapter.id)
+      const content = await getFileContent(book.owner, book.repo, chapter.path, chapter.id)
       setContent(content)
     } catch (error) {
       console.error("Failed to load chapter content:", error)
@@ -56,20 +65,65 @@ export function BookViewer({
 
   useEffect(() => {
     fetchChapterContent()
+    setCurrentPage(0)
+    // Reset and recalculate pages after content loads
+    setTimeout(() => {
+      if (contentRef.current) {
+        const containerWidth = contentRef.current.parentElement?.clientWidth || 1000
+        const contentWidth = contentRef.current.scrollWidth
+        const pages = Math.ceil(contentWidth / containerWidth)
+        setTotalPages(Math.max(1, pages))
+      }
+    }, 100)
   }, [fetchChapterContent])
 
   useEffect(() => {
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0
+    // Keyboard navigation
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        handlePrevious()
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+        e.preventDefault()
+        handleNext()
+      }
     }
-  }, [currentChapter, content])
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [currentChapter, currentPage, totalPages])
+
+  useEffect(() => {
+    // Recalculate pages when content or settings change
+    const timer = setTimeout(() => {
+      if (contentRef.current) {
+        const container = contentRef.current.parentElement
+        if (container) {
+          const containerWidth = container.clientWidth
+          const contentWidth = contentRef.current.scrollWidth
+          const pages = Math.ceil(contentWidth / containerWidth)
+          setTotalPages(Math.max(1, pages))
+        }
+      }
+    }, 150)
+    return () => clearTimeout(timer)
+  }, [content, fontSize, fontFamily])
 
   const handlePrevious = () => {
-    onChapterChange(Math.max(0, currentChapter - 1))
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1)
+    } else {
+      onChapterChange(Math.max(0, currentChapter - 1))
+      setCurrentPage(0)
+    }
   }
 
   const handleNext = () => {
-    onChapterChange(Math.min(book.totalChapters - 1, currentChapter + 1))
+    if (currentPage < totalPages - 1) {
+      setCurrentPage(currentPage + 1)
+    } else {
+      onChapterChange(Math.min(book.totalChapters - 1, currentChapter + 1))
+      setCurrentPage(0)
+    }
   }
 
   const handleLinkClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
@@ -78,6 +132,48 @@ export function BookViewer({
       event.preventDefault()
       window.open(href, "_blank", "noopener,noreferrer")
     }
+  }
+
+  const handleTextSelection = () => {
+    const selection = window.getSelection()
+    const text = selection?.toString().trim()
+    if (text && text.length > 0) {
+      setSelectedText(text)
+      setShowActionMenu(true)
+    } else {
+      setShowActionMenu(false)
+      setSelectedText("")
+    }
+  }
+
+  const handleAddNote = () => {
+    if (selectedText) {
+      alert(`Note added for: "${selectedText}"`)
+      setShowActionMenu(false)
+    }
+  }
+
+  const handleDictionary = () => {
+    if (selectedText) {
+      window.open(`https://www.merriam-webster.com/dictionary/${encodeURIComponent(selectedText)}`, "_blank")
+      setShowActionMenu(false)
+    }
+  }
+
+  const handleShare = () => {
+    if (selectedText && navigator.share) {
+      navigator.share({
+        title: book.title,
+        text: selectedText,
+      }).catch(() => {
+        navigator.clipboard.writeText(selectedText)
+        alert("Quote copied to clipboard!")
+      })
+    } else if (selectedText) {
+      navigator.clipboard.writeText(selectedText)
+      alert("Quote copied to clipboard!")
+    }
+    setShowActionMenu(false)
   }
 
   const getFontSizeClass = () => {
@@ -134,35 +230,42 @@ export function BookViewer({
     <div className={`h-screen flex flex-col ${getThemeClasses()} transition-colors duration-300`}>
       <ProgressBar book={book} currentChapter={currentChapter} />
 
-      <header className="flex items-center justify-between px-4 py-3 border-b border-border/50 backdrop-blur-sm bg-background/80 sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onToggleTOC}>
+      {/* Modern E-Reader Header */}
+      <header className="flex items-center justify-between px-6 py-4 border-b border-border/30 backdrop-blur-sm bg-background/95 sticky top-0 z-10">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={onToggleTOC} className="hover:bg-muted/50">
             <Menu className="w-5 h-5" />
           </Button>
-          <div className="min-w-0">
-            <h2 className="font-semibold truncate max-w-[200px] sm:max-w-[300px] text-foreground">
-              {chapter?.title || "Untitled"}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {book.title} • {currentChapter + 1} of {book.totalChapters}
-            </p>
-          </div>
+          <Button variant="ghost" size="icon" className="hover:bg-muted/50">
+            <Search className="w-5 h-5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="hover:bg-muted/50">
+            <Bookmark className="w-5 h-5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="hover:bg-muted/50">
+            <Type className="w-5 h-5" />
+          </Button>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose}>
+        
+        <h1 className="absolute left-1/2 -translate-x-1/2 text-base font-medium text-foreground/80">
+          {book.title}
+        </h1>
+
+        <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-muted/50">
           <X className="w-5 h-5" />
         </Button>
       </header>
 
       <main className="flex-1 overflow-hidden flex">
         <aside
-          className={`fixed inset-y-0 left-0 w-72 bg-background border-r transform transition-transform duration-300 z-20 ${
+          className={`fixed inset-y-0 left-0 w-80 bg-background border-r border-border/30 transform transition-transform duration-300 z-20 ${
             showTOC ? "translate-x-0" : "-translate-x-full"
-          } lg:relative lg:translate-x-0 ${showTOC ? "lg:w-72" : "lg:w-0"}`}
+          } lg:relative lg:translate-x-0 ${showTOC ? "lg:w-80" : "lg:w-0"}`}
         >
-          <div className="h-full overflow-y-auto p-4">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <BookOpen className="w-4 h-4" />
-              Contents
+          <div className="h-full overflow-y-auto p-6">
+            <h3 className="font-semibold text-lg mb-6 flex items-center gap-2 text-foreground">
+              <BookOpen className="w-5 h-5" />
+              Table of Contents
             </h3>
             <nav className="space-y-1">
               {book.chapters.map((ch, index) => {
@@ -177,13 +280,16 @@ export function BookViewer({
                       onChapterChange(index)
                       if (window.innerWidth < 1024) onToggleTOC()
                     }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                    className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-all ${
                       index === currentChapter
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-muted"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "hover:bg-muted/50 text-foreground/70 hover:text-foreground"
                     }`}
                   >
-                    <span className="block truncate">{ch.title}{sizeLabel}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs opacity-60">{index + 1}</span>
+                      <span className="block truncate flex-1">{ch.title}{sizeLabel}</span>
+                    </div>
                   </button>
                 )
               })}
@@ -198,49 +304,71 @@ export function BookViewer({
           />
         )}
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-hidden relative flex flex-row">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-primary" />
-                <p className="text-muted-foreground">Loading large chapter...</p>
+                <p className="text-muted-foreground">Loading chapter...</p>
               </div>
             </div>
           ) : (
-            <article
-              ref={contentRef}
-              className={`max-w-2xl mx-auto px-6 py-8 ${getFontFamilyClass()}`}
-            >
-              <div className={getFontSizeClass()}>
-                <ReactMarkdown
-                  components={{
-                    a: renderLink,
-                    h1: ({ children }) => (
-                      <h1 className="text-3xl font-bold mb-4">{children}</h1>
-                    ),
-                    h2: ({ children }) => (
-                      <h2 className="text-2xl font-semibold mt-8 mb-4">{children}</h2>
-                    ),
+            <>
+              {/* Horizontal Pagination Container */}
+              <div className="flex-1 overflow-hidden relative w-full">
+                <article
+                  ref={contentRef}
+                  className={`h-full w-full ${getFontFamilyClass()} overflow-hidden`}
+                  onMouseUp={handleTextSelection}
+                  onTouchEnd={handleTextSelection}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    height: '100%',
+                    transform: `translateX(-${currentPage * 100}%)`,
+                    transition: 'transform 0.4s ease-in-out'
+                  }}
+                >
+                  <div className={`${getFontSizeClass()} prose-custom shrink-0 w-full h-full px-12 py-8 overflow-y-auto`} style={{ textAlign: 'justify', textJustify: 'inter-word' }}>
+                    <ReactMarkdown
+                    components={{
+                      a: renderLink,
+                      h1: ({ children }) => (
+                        <h1 className="text-3xl font-bold mb-6 break-after-column">{children}</h1>
+                      ),
+                      h2: ({ children }) => (
+                        <h2 className="text-2xl font-semibold mt-10 mb-5 break-after-avoid">{children}</h2>
+                      ),
                     h3: ({ children }) => (
-                      <h3 className="text-xl font-semibold mt-6 mb-3">{children}</h3>
+                      <h3 className="text-xl font-semibold mt-8 mb-4 break-after-avoid">{children}</h3>
                     ),
                     h4: ({ children }) => (
-                      <h4 className="text-lg font-semibold mt-6 mb-2">{children}</h4>
+                      <h4 className="text-lg font-semibold mt-6 mb-3 break-after-avoid">{children}</h4>
                     ),
-                    p: ({ children }) => (
-                      <p className="leading-relaxed mb-4">{children}</p>
-                    ),
+                    p: ({ children, node }) => {
+                      // Check if paragraph contains only an image with alt text (which becomes a figure)
+                      // This prevents invalid HTML nesting of figure inside p tags
+                      const hasOnlyImage = node?.children?.length === 1 && 
+                        node.children[0]?.type === 'element' && 
+                        node.children[0]?.tagName === 'img'
+                      
+                      if (hasOnlyImage) {
+                        return <>{children}</>
+                      }
+                      
+                      return <p className="mb-5 leading-[1.8]">{children}</p>
+                    },
                     ul: ({ children }) => (
-                      <ul className="list-disc list-inside mb-4 space-y-2">{children}</ul>
+                      <ul className="list-disc list-inside mb-5 space-y-2 break-inside-avoid">{children}</ul>
                     ),
                     ol: ({ children }) => (
-                      <ol className="list-decimal list-inside mb-4 space-y-2">{children}</ol>
+                      <ol className="list-decimal list-inside mb-5 space-y-2 break-inside-avoid">{children}</ol>
                     ),
                     li: ({ children }) => (
-                      <li className="ml-4">{children}</li>
+                      <li className="ml-4 break-inside-avoid">{children}</li>
                     ),
                     blockquote: ({ children }) => (
-                      <blockquote className="border-l-4 border-primary pl-4 italic my-4 bg-muted/30 py-2 pr-2 rounded-r">
+                      <blockquote className="border-l-4 border-primary pl-4 italic my-6 bg-muted/30 py-3 pr-3 rounded-r break-inside-avoid">
                         {children}
                       </blockquote>
                     ),
@@ -265,17 +393,22 @@ export function BookViewer({
                       </pre>
                     ),
                     img: ({ src, alt }) => {
+                      // Skip rendering if src is missing or empty
+                      if (!src || src.trim() === "") {
+                        return null
+                      }
+                      
                       const hasCaption = alt && alt.trim() !== ""
                       if (hasCaption) {
                         return (
-                          <figure className="my-6">
+                          <figure className="my-8 break-inside-avoid">
                             <img
                               src={src}
                               alt={alt}
-                              className="rounded-lg max-w-full h-auto"
+                              className="rounded-lg max-w-full h-auto shadow-sm"
                               loading="lazy"
                             />
-                            <figcaption className="text-center text-sm text-muted-foreground mt-2">
+                            <figcaption className="text-center text-sm text-muted-foreground mt-3">
                               {alt}
                             </figcaption>
                           </figure>
@@ -285,14 +418,14 @@ export function BookViewer({
                         <img
                           src={src}
                           alt={alt || ""}
-                          className="rounded-lg max-w-full h-auto"
+                          className="rounded-lg max-w-full h-auto shadow-sm my-6 break-inside-avoid"
                           loading="lazy"
                         />
                       )
                     },
-                    hr: () => <hr className="my-8 border-border" />,
+                    hr: () => <hr className="my-10 border-border/30" />,
                     strong: ({ children }) => (
-                      <strong className="font-semibold">{children}</strong>
+                      <strong className="font-semibold text-foreground">{children}</strong>
                     ),
                     em: ({ children }) => (
                       <em className="italic">{children}</em>
@@ -302,28 +435,70 @@ export function BookViewer({
                   {content}
                 </ReactMarkdown>
               </div>
-
-              <div className="flex items-center justify-between mt-12 pt-8 border-t border-border/50">
-                <Button
-                  variant="outline"
-                  onClick={handlePrevious}
-                  disabled={currentChapter === 0}
-                  className="gap-2"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleNext}
-                  disabled={currentChapter === book.totalChapters - 1}
-                  className="gap-2"
-                >
-                  Next
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
+                </article>
               </div>
-            </article>
+
+              {/* Action Menu for Text Selection */}
+              {showActionMenu && selectedText && (
+                <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-800 text-white rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1 min-w-40">
+                  <button
+                    onClick={handleAddNote}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-slate-700 rounded-lg transition-colors text-left"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span className="text-sm font-medium">ADD NOTE</span>
+                  </button>
+                  <button
+                    onClick={handleDictionary}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-slate-700 rounded-lg transition-colors text-left"
+                  >
+                    <BookIcon className="w-4 h-4" />
+                    <span className="text-sm font-medium">DICTIONARY</span>
+                  </button>
+                  <button
+                    onClick={handleShare}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-slate-700 rounded-lg transition-colors text-left"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span className="text-sm font-medium">SHARE</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Page Navigation - Fixed at Bottom */}
+              <div className="absolute bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border/20">
+                <div className="max-w-5xl mx-auto px-8 py-4">
+                  <div className="flex items-center justify-between">
+                    <Button
+                      variant="ghost"
+                      onClick={handlePrevious}
+                      disabled={currentChapter === 0 && currentPage === 0}
+                      className="gap-2 hover:bg-muted/50"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Previous
+                    </Button>
+
+                    {/* Page Progress Indicator */}
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground">
+                        Chapter {currentChapter + 1} of {book.totalChapters} • Page {currentPage + 1} of {totalPages}
+                      </p>
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      onClick={handleNext}
+                      disabled={currentChapter === book.totalChapters - 1 && currentPage === totalPages - 1}
+                      className="gap-2 hover:bg-muted/50"
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </main>
