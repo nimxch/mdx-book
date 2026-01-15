@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, Menu, X, BookOpen, Search, Bookmark, Type, MessageSquare, Book as BookIcon, Share2, Home } from "lucide-react"
+import { ChevronLeft, ChevronRight, Menu, X, BookOpen, Search, Bookmark, Type, MessageSquare, Book as BookIcon, Share2, Home, Maximize2, Minimize2, ChevronDown } from "lucide-react"
 import type { Book } from "@/types"
 import { useSettings } from "@/context/SettingsContext"
 import { ProgressBar } from "./ProgressBar"
@@ -14,7 +14,6 @@ interface BookViewerProps {
   currentChapter: number
   onChapterChange: (chapter: number) => void
   onClose: () => void
-  onToggleTOC: () => void
   showTOC: boolean
 }
 
@@ -23,8 +22,6 @@ export function BookViewer({
   currentChapter,
   onChapterChange,
   onClose,
-  onToggleTOC,
-  showTOC,
   initialPageIndex = 0,
 }: BookViewerProps & { initialPageIndex?: number }) {
   const { theme, fontSize, fontFamily } = useSettings()
@@ -33,6 +30,8 @@ export function BookViewer({
   const [currentPageIndex, setCurrentPageIndex] = useState(initialPageIndex)
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [bookmarks, setBookmarks] = useState<BookBookmark[]>([])
+  const [zenMode, setZenMode] = useState(false)
+  const [showDownArrow, setShowDownArrow] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
   const currentPage = book.pages[currentPageIndex]
@@ -225,6 +224,85 @@ export function BookViewer({
     setBookmarks([{ pageIndex: currentPageIndex, chapterIndex: currentPage.chapterIndex, title: currentPage.title, createdAt: Date.now() }])
   }
 
+  const handleZenMode = () => {
+    if (!zenMode) {
+      // Enter fullscreen
+      const el = document.documentElement
+      if (el.requestFullscreen) {
+        el.requestFullscreen()
+      } else if ((el as any).webkitRequestFullscreen) {
+        (el as any).webkitRequestFullscreen()
+      } else if ((el as any).msRequestFullscreen) {
+        (el as any).msRequestFullscreen()
+      }
+      setZenMode(true)
+    } else {
+      // Exit fullscreen
+      if (document.exitFullscreen) {
+        document.exitFullscreen()
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen()
+      } else if ((document as any).msExitFullscreen) {
+        (document as any).msExitFullscreen()
+      }
+      setZenMode(false)
+    }
+  }
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setZenMode(false)
+      }
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [])
+
+  const handleResize = () => {
+    if (zenMode && contentRef.current) {
+      contentRef.current.style.height = `${window.innerHeight}px`
+    }
+  }
+
+  useEffect(() => {
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [zenMode])
+
+  const handleScroll = (direction: 'up' | 'down') => {
+    if (contentRef.current) {
+      const scrollStep = 100
+      const { scrollTop } = contentRef.current
+      if (direction === 'up') {
+        contentRef.current.scrollTo({ top: scrollTop - scrollStep, behavior: 'smooth' })
+      } else {
+        contentRef.current.scrollTo({ top: scrollTop + scrollStep, behavior: 'smooth' })
+      }
+    }
+  }
+
+  useEffect(() => {
+    const checkOverflow = () => {
+      if (contentRef.current) {
+        const el = contentRef.current
+        setShowDownArrow(el.scrollHeight > el.clientHeight && el.scrollTop + el.clientHeight < el.scrollHeight - 2)
+      }
+    }
+    checkOverflow()
+    if (contentRef.current) {
+      contentRef.current.addEventListener('scroll', checkOverflow)
+    }
+    window.addEventListener('resize', checkOverflow)
+    return () => {
+      if (contentRef.current) {
+        contentRef.current.removeEventListener('scroll', checkOverflow)
+      }
+      window.removeEventListener('resize', checkOverflow)
+    }
+  }, [currentPageIndex, book, zenMode])
+
   return (
     <div className={`h-screen flex flex-col ${getThemeClasses()} transition-colors duration-300`}>
       <ProgressBar book={book} currentChapter={currentChapter} />
@@ -241,13 +319,13 @@ export function BookViewer({
             <Home className="w-5 h-5" />
           </Button>
           <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={onToggleTOC} 
-            className="hover:bg-muted/50"
-            title="Table of Contents"
+            variant={zenMode ? "default" : "ghost"}
+            size="icon"
+            className={zenMode ? "bg-green-600 text-white" : "hover:bg-muted/50"}
+            title={zenMode ? "Exit Fullscreen" : "Zen Mode (Fullscreen)"}
+            onClick={handleZenMode}
           >
-            <Menu className="w-5 h-5" />
+            {zenMode ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
           </Button>
           <Button 
             variant={isBookmarked ? "default" : "ghost"}
@@ -279,62 +357,18 @@ export function BookViewer({
         <h1 className="flex-1 text-center px-4 text-sm md:text-base font-medium text-foreground truncate">
           {book.title}
         </h1>
-
         <div className="w-10"></div>
       </header>
 
-      <main className="flex-1 overflow-hidden flex">
-        <aside
-          className={`fixed inset-y-0 left-0 w-80 bg-background border-r border-border/30 transform transition-transform duration-300 z-20 ${
-            showTOC ? "translate-x-0" : "-translate-x-full"
-          } lg:hidden`}
-        >
-          <div className="h-full overflow-y-auto p-6">
-            <h3 className="font-semibold text-lg mb-6 flex items-center gap-2 text-foreground">
-              <BookOpen className="w-5 h-5" />
-              Table of Contents
-            </h3>
-            <nav className="space-y-1">
-              {book.chapters.map((ch, index) => (
-                <button
-                  key={`${ch.path}-${ch.id}`}
-                  onClick={() => {
-                    const firstPageOfChapter = book.pages.findIndex(p => p.chapterIndex === index)
-                    setCurrentPageIndex(firstPageOfChapter >= 0 ? firstPageOfChapter : 0)
-                    onChapterChange(index)
-                    if (window.innerWidth < 1024) onToggleTOC()
-                  }}
-                  className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-all ${
-                    index === currentChapter
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "hover:bg-muted/50 text-foreground/70 hover:text-foreground"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs opacity-60">{index + 1}</span>
-                    <span className="block truncate flex-1">{ch.title}</span>
-                  </div>
-                </button>
-              ))}
-            </nav>
-          </div>
-        </aside>
-
-        {showTOC && (
-          <div
-            className="fixed inset-0 bg-black/50 lg:hidden z-10"
-            onClick={onToggleTOC}
-          />
-        )}
-
+      <main className={`flex-1 overflow-hidden flex${zenMode ? ' zen' : ''}`}>
         <div className="flex-1 overflow-hidden relative flex flex-row">
           <div className="flex-1 overflow-hidden relative w-full">
             <div
               ref={contentRef}
-              className={`h-full ${getFontFamilyClass()} overflow-y-auto px-8 md:px-12 lg:px-24 py-8 pb-24 md:pb-28`}
+              className={`h-full ${getFontFamilyClass()} overflow-y-auto no-scrollbar px-8 md:px-12 lg:px-24 py-8 pb-24 md:pb-28${zenMode ? ' bg-white' : ''}`}
               onMouseUp={handleTextSelection}
               onTouchEnd={handleTextSelection}
-              style={{ textAlign: 'justify', textJustify: 'inter-word', scrollBehavior: 'smooth' }}
+              style={{ textAlign: 'justify', textJustify: 'inter-word', scrollBehavior: 'smooth', position: 'relative' }}
             >
               {currentPage && (
                 <div className={`${getFontSizeClass()} prose-custom`}>
@@ -500,6 +534,12 @@ export function BookViewer({
                 <Share2 className="w-4 h-4" />
                 <span className="text-sm font-medium">SHARE</span>
               </button>
+            </div>
+          )}
+
+          {showDownArrow && (
+            <div style={{ position: 'absolute', left: '50%', bottom: 32, transform: 'translateX(-50%)', zIndex: 20, opacity: 0.25 }}>
+              <ChevronDown className="w-14 h-14 animate-flicker" />
             </div>
           )}
 
