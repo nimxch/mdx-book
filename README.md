@@ -1,73 +1,82 @@
-# React + TypeScript + Vite
+# MarkBook
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+![preview](snap.png)
 
-Currently, two official plugins are available:
+**Read repositories the way they deserve to be read—beautifully, offline, on your terms.**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+MarkBook is a specialized reader that instantly converts GitHub markdown repositories into organized, offline-ready electronic books. It is built with a "Local-First" architecture, ensuring your reading data and tokens never leave your device.
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+-   **Turn Repos into Books**: Download and parse any public or privately accessible GitHub repository.
+-   **Offline First**: Advanced caching strategies (IndexedDB) store chapters, images, and formatting specifically on your device.
+-   **Privacy Focused**: No backend database. Your GitHub Personal Access Tokens (PAT) are stored exclusively in `localStorage`.
+-   **Custom Reading Experience**:
+    -   Multiple Themes: Light, Dark, Sepia, System.
+    -   Typography: Custom Serif and Sans-serif fonts with adjustable sizing.
+-   **Zen Mode**: Distraction-free, full-screen reading environment.
+-   **Smart Table of Contents**: Automatically generated navigation for easy access to chapters.
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+-   Node.js (v18 or higher)
+-   npm (v9 or higher)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Installation
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/nimxch/mdx-book.git
+    cd mdx-book
+    ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+3.  Start the development server:
+    ```bash
+    npm run dev
+    ```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Usage
+
+1.  **Connect GitHub**:
+    *   Click "Generate Token on GitHub" in the login screen (Requesting `repo` and `read:user` scopes).
+    *   Paste your Personal Access Token (PAT) into the application.
+    *   *Note: Guest mode is also available for public repositories.*
+
+2.  **Download a Book**:
+    *   Enter the URL of a GitHub repository (e.g., `owner/repo` or full URL).
+    *   Click "Download & Read".
+
+3.  **Read**:
+    *   Your book is now available offline in your library.
+    *   Use the settings menu to adjust fonts and themes.
+
+## Technologies
+
+-   **Core**: React 19, Vite 7, TypeScript
+-   **Styling**: Tailwind CSS, Radix UI
+-   **Data Storage**: Dexie.js (IndexedDB wrapper)
+-   **Markdown Engine**: `react-markdown`, `remark-gfm`
+
+## Privacy & Security
+
+MarkBook respects your privacy by design:
+-   **No Tracking**: We do not use analytics or tracking scripts.
+-   **Local Storage**: Tokens and user data are stored locally.
+-   **Direct Connection**: Use of GitHub API is direct from your browser; no proxy servers are involved.
+
+## Contact
+
+-   **Email**: nimaic.dev@gmail.com
+-   **Social**: [X (@nimxch)](https://x.com/nimxch)
+-   **Project Issues**: [GitHub Issues](https://github.com/nimxch/mdx-book/issues)
+
+---
+
+**MarkBook** — Read better. Read anywhere. Read yours.
