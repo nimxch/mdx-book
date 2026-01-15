@@ -22,9 +22,10 @@ export async function getFileContent(
   repo: string,
   path: string,
   _sha: string,
-  branch = "main"
+  branch?: string
 ): Promise<string> {
-  const url = `${GITHUB_API_BASE}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(branch)}`
+  const query = branch ? `?ref=${encodeURIComponent(branch)}` : ""
+  const url = `${GITHUB_API_BASE}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodeURIComponent(path)}${query}`
 
   const response = await fetchWithAuth(url, "application/vnd.github.raw")
   if (!response.ok) {
@@ -38,8 +39,9 @@ export async function getFileContent(
 export async function getRepositoryContent(
   project: GitHubProject
 ): Promise<MarkdownFile[]> {
-  const { owner, repo, branch = "main", path = "" } = project
-  const url = `${GITHUB_API_BASE}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(branch)}`
+  const { owner, repo, branch, path = "" } = project
+  const query = branch ? `?ref=${encodeURIComponent(branch)}` : ""
+  const url = `${GITHUB_API_BASE}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodeURIComponent(path)}${query}`
 
   const response = await fetchWithAuth(url)
   if (!response.ok) {
